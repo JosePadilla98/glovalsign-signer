@@ -1,36 +1,59 @@
-# Rsbuild project
+# Glovalsign Signer (SPA)
+
+SPA React construida con [Rsbuild](https://rsbuild.rs) para gestionar el proceso de firma de documentos con certificado digital (P12/PFX) directamente en el navegador.
+
+El usuario accede a esta aplicación mediante un enlace recibido por email. Visualiza el documento, adjunta su certificado digital, firma el PDF en el navegador y lo envía al backend sin que la clave privada salga del dispositivo.
 
 ## Setup
-
-Install the dependencies:
 
 ```bash
 npm install
 ```
 
-## Get started
-
-Start the dev server, and the app will be available at [http://localhost:3000](http://localhost:3000).
+## Arrancar en desarrollo
 
 ```bash
 npm run dev
 ```
 
-Build the app for production:
+El dev server arrancará en [http://localhost:3001](http://localhost:3001) (o el siguiente puerto libre si el 3001 está ocupado).
+
+Las peticiones a `/api` son redirigidas automáticamente al backend según la variable `BACKEND_URL`.
+
+## Build de producción
 
 ```bash
 npm run build
 ```
 
-Preview the production build locally:
+Los artefactos se generan en `dist/`. Sirve esa carpeta con cualquier servidor web estático (nginx, etc.) y configura el proxy `/api` → backend en el servidor.
+
+## Preview del build
 
 ```bash
 npm run preview
 ```
 
-## Learn more
+## Variables de entorno
 
-To learn more about Rsbuild, check out the following resources:
+Crea un archivo `.env.local` en la raíz del proyecto (ya incluido en `.gitignore`):
 
-- [Rsbuild documentation](https://rsbuild.rs) - explore Rsbuild features and APIs.
-- [Rsbuild GitHub repository](https://github.com/web-infra-dev/rsbuild) - your feedback and contributions are welcome!
+| Variable      | Ejemplo de valor          | Descripción                                                               |
+| ------------- | ------------------------- | ------------------------------------------------------------------------- |
+| `BACKEND_URL` | `http://localhost:3000`   | URL del backend Glovalsign. Solo usada en desarrollo por el proxy del dev server. |
+
+> **Nota:** En producción no existe proxy. El servidor web (nginx, etc.) debe encargarse de redirigir `/api` al backend.
+
+## Flujo de uso
+
+1. El firmante recibe un email con un enlace del tipo `https://<SPA_URL>/firmar/<token>`.
+2. La SPA valida el token contra el backend y muestra los metadatos del documento.
+3. El firmante visualiza el PDF en el paso 1.
+4. En el paso 2, adjunta su certificado P12/PFX, introduce la contraseña y firma el PDF en el navegador.
+5. El PDF firmado se envía al backend (`POST /api/v1/sign/public/certificado-digital/firmar-spa/:token`).
+6. Se muestra la página de éxito y el backend envía el email de confirmación.
+
+## Recursos
+
+- [Documentación de Rsbuild](https://rsbuild.rs)
+

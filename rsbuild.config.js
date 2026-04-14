@@ -1,6 +1,9 @@
 // @ts-check
-import { defineConfig } from '@rsbuild/core';
+import { defineConfig, loadEnv } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
+
+const { publicVars, rawPublicVars } = loadEnv({ prefixes: ['PUBLIC_'] });
+const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
 
 export default defineConfig({
   plugins: [pluginReact()],
@@ -21,7 +24,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: backendUrl,
         changeOrigin: true,
       },
     },

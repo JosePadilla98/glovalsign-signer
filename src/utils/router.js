@@ -9,32 +9,28 @@
 
 /**
  * Extract the signing token from the current URL.
- * Supports path segments and query params.
+ * Supports path segments (/firmar/{token}), query params (?token=) and hash (#/{token}).
+ * Validation is delegated entirely to the backend.
  * @returns {string|null}
  */
 export function getTokenFromUrl() {
-  // Try path: /firmar/{token} or /{token}
-  const pathParts = window.location.pathname.replace(/^\//, '').split('/');
-  for (const part of pathParts) {
-    if (part && part.length >= 32) {
-      return part;
-    }
-  }
-
-  // Try query string: ?token={token}
+  // Query string takes priority: ?token={token}
   const params = new URLSearchParams(window.location.search);
   const tokenParam = params.get('token');
-  if (tokenParam && tokenParam.length >= 32) {
-    return tokenParam;
+  if (tokenParam) return tokenParam;
+
+  // Path segments: /firmar/{token} — skip known static segments
+  const STATIC_SEGMENTS = new Set(['firmar', 'certificado-digital', '']);
+  const pathParts = window.location.pathname.replace(/^\//, '').split('/');
+  for (const part of pathParts) {
+    if (!STATIC_SEGMENTS.has(part)) return part;
   }
 
-  // Try hash: #/firmar/{token}
+  // Hash: #/firmar/{token} or #/{token}
   const hash = window.location.hash.replace(/^#\/?/, '');
   const hashParts = hash.split('/');
   for (const part of hashParts) {
-    if (part && part.length >= 32) {
-      return part;
-    }
+    if (part && !STATIC_SEGMENTS.has(part)) return part;
   }
 
   return null;

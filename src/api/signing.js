@@ -13,7 +13,7 @@ const BASE_URL = '/api/v1/sign';
  * @returns {Promise<{ok: boolean, data?: any, error?: string, status?: number}>}
  */
 export async function getSolicitud(token) {
-  const url = `${BASE_URL}/public/documento/info/${token}`;
+  const url = `${BASE_URL}/public/documento/solicitud/${token}`;
   try {
     const res = await fetch(url, {
       method: 'GET',
