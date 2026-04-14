@@ -1,0 +1,25 @@
+{
+  "name": "Glovalsign Signer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rsbuild build",
+    "dev": "rsbuild dev --open",
+    "preview": "rsbuild preview"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "^1.7.1"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.2.0",
+    "@rsbuild/plugin-react": "^1.4.6",
+    "@signpdf/placeholder-pdf-lib": "^3.3.0",
+    "@signpdf/signer-p12": "^3.3.0",
+    "@signpdf/signpdf": "^3.3.0",
+    "node-forge": "^1.4.0",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  }
+}
