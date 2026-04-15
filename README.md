@@ -18,7 +18,7 @@ npm run dev
 
 El dev server arrancará en [http://localhost:3001](http://localhost:3001) (o el siguiente puerto libre si el 3001 está ocupado).
 
-Las peticiones a `/api` son redirigidas automáticamente al backend según la variable `BACKEND_URL`.
+Las peticiones a la API van directamente a `PUBLIC_BACKEND_URL` (sin proxy).
 
 ## Build de producción
 
@@ -26,7 +26,7 @@ Las peticiones a `/api` son redirigidas automáticamente al backend según la va
 npm run build
 ```
 
-Los artefactos se generan en `dist/`. Sirve esa carpeta con cualquier servidor web estático (nginx, etc.) y configura el proxy `/api` → backend en el servidor.
+Los artefactos se generan en `dist/`. Sirve esa carpeta con cualquier servidor web estático (nginx, etc.).
 
 ## Preview del build
 
@@ -38,9 +38,10 @@ npm run preview
 
 Crea un archivo `.env.local` en la raíz del proyecto (ya incluido en `.gitignore`):
 
-| Variable      | Ejemplo de valor          | Descripción                                                               |
-| ------------- | ------------------------- | ------------------------------------------------------------------------- |
-| `BACKEND_URL` | `http://localhost:3000`   | URL del backend Glovalsign. Solo usada en desarrollo por el proxy del dev server. |
+| Variable                   | Ejemplo de valor               | Descripción                                                                                                                    |
+| -------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `PUBLIC_BACKEND_URL`       | `http://localhost:4000`        | URL base del backend Glovalsign. Usada directamente por el frontend para todas las llamadas a la API.                          |
+| `PUBLIC_SIGNATURE_LENGTH`  | `32768`                        | Tamaño del placeholder de firma PKCS#7 en bytes. Aumentar si aparece *“Signature exceeds placeholder length”*. Por defecto: `32768` (32 KB). |
 
 > **Nota:** En producción no existe proxy. El servidor web (nginx, etc.) debe encargarse de redirigir `/api` al backend.
 

@@ -113,7 +113,7 @@ export function CertificateSigningStep({ token, solicitud, onSuccess }) {
         throw new Error(result.error || 'Error al enviar el documento firmado al servidor.');
       }
 
-      onSuccess();
+      onSuccess(signedBytes);
     } catch (err) {
       console.error('Error en [handleSign]:', err);
       setGlobalError(err.message || 'Se produjo un error durante la firma. Inténtalo de nuevo.');

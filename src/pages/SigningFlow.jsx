@@ -28,6 +28,7 @@ export function SigningFlow({ token }) {
   const [solicitud, setSolicitud] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [signedPdfBytes, setSignedPdfBytes] = useState(null);
 
   // Load signing request metadata on mount
   useEffect(() => {
@@ -115,6 +116,7 @@ export function SigningFlow({ token }) {
       <SuccessPage
         signerName={solicitud?.datos_documento?.nombre_firmante}
         documentType={solicitud?.datos_documento?.tipo_documento}
+        signedPdfBytes={signedPdfBytes}
       />
     );
   }
@@ -149,7 +151,7 @@ export function SigningFlow({ token }) {
           <CertificateSigningStep
             token={token}
             solicitud={solicitud}
-            onSuccess={() => setCurrentStep(STEP_SUCCESS)}
+            onSuccess={(bytes) => { setSignedPdfBytes(bytes); setCurrentStep(STEP_SUCCESS); }}
           />
         )}
       </div>
