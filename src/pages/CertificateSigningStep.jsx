@@ -183,7 +183,7 @@ export function CertificateSigningStep({ token, solicitud, onSuccess }) {
             !certInfo.commonName.toLowerCase().includes(nombre_firmante.split(' ')[0].toLowerCase()) && (
               <Alert
                 type="warning"
-                message="El nombre del certificado no coincide exactamente con el del firmante. Asegúrate de usar el certificado correcto."
+                message={`El nombre del certificado (${certInfo.commonName}) no coincide exactamente con el del firmante (${nombre_firmante}). Asegúrate de usar el certificado correcto.`}
               />
             )
           )}
