@@ -1,21 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Success confirmation page shown after the document is signed and submitted.
  */
 export function SuccessPage({ signerName, documentType, signedPdfBytes }) {
-  const downloadUrlRef = useRef(null);
+  const [downloadUrl, setDownloadUrl] = useState(null);
 
   useEffect(() => {
-    if (signedPdfBytes) {
-      const blob = new Blob([signedPdfBytes], { type: 'application/pdf' });
-      downloadUrlRef.current = URL.createObjectURL(blob);
-    }
-    return () => {
-      if (downloadUrlRef.current) {
-        URL.revokeObjectURL(downloadUrlRef.current);
-      }
-    };
+    if (!signedPdfBytes) return;
+    const blob = new Blob([signedPdfBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    setDownloadUrl(url);
+    return () => URL.revokeObjectURL(url);
   }, [signedPdfBytes]);
 
   const fileName = documentType
@@ -30,9 +26,9 @@ export function SuccessPage({ signerName, documentType, signedPdfBytes }) {
         {signerName ? `${signerName}, el` : 'El'} documento{documentType ? ` (${documentType})` : ''} ha sido firmado
         y enviado a Glovalsign correctamente.
       </p>
-      {signedPdfBytes && downloadUrlRef.current && (
+      {downloadUrl && (
         <a
-          href={downloadUrlRef.current}
+          href={downloadUrl}
           download={fileName}
           className="btn btn--secondary btn--lg"
           style={{ marginTop: '1.5rem', display: 'inline-block' }}

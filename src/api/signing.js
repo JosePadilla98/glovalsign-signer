@@ -3,7 +3,7 @@
  * All calls include the token in the URL as defined by the backend routes.
  */
 
-const BASE_URL = `${import.meta.env.PUBLIC_BACKEND_URL}/api/v1/sign`;
+const BASE_URL = '/api/v1/sign';
 
 /**
  * Fetch the signing request data for a given token.
@@ -51,15 +51,13 @@ export function getDocumentViewUrl(token) {
  * @returns {Promise<{ok: boolean, data?: any, error?: string, status?: number}>}
  */
 export async function submitSignedDocument(token, signedPdfBytes) {
-  const url = `${BASE_URL}/public/certificado-digital/firmar/${token}`;
-  const blob = new Blob([signedPdfBytes], { type: 'application/pdf' });
-  const formData = new FormData();
-  formData.append('documentoFirmado', blob, 'documento-firmado.pdf');
+  const url = `${BASE_URL}/public/certificado-digital/firmar-spa/${token}`;
 
   try {
     const res = await fetch(url, {
       method: 'POST',
-      body: formData,
+      headers: { 'Content-Type': 'application/pdf' },
+      body: signedPdfBytes,
     });
 
     if (!res.ok) {
