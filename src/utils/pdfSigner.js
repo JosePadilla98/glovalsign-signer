@@ -81,13 +81,14 @@ export async function signPdf(pdfBytes, p12Buffer, password, signerInfo = {}) {
   const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
 
   // 2. Add signature placeholder
+  const signatureLength = parseInt(import.meta.env.PUBLIC_SIGNATURE_LENGTH, 10) || 32768;
   await pdflibAddPlaceholder({
     pdfDoc,
     reason: signerInfo.reason || 'Firma de documento',
     contactInfo: signerInfo.email || '',
     name: signerInfo.name || '',
     location: signerInfo.location || '',
-    signatureLength: 8192,
+    signatureLength,
   });
 
   // 3. Serialize PDF with placeholder
@@ -105,6 +106,7 @@ export async function signPdf(pdfBytes, p12Buffer, password, signerInfo = {}) {
     );
     return new Uint8Array(signedBytes);
   } catch (err) {
+  
     if (/mac|password|passphrase|verification|pkcs12/i.test(err.message)) {
       throw new Error('Contraseña incorrecta. Comprueba la contraseña del certificado.');
     }

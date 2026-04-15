@@ -115,6 +115,7 @@ export function CertificateSigningStep({ token, solicitud, onSuccess }) {
 
       onSuccess();
     } catch (err) {
+      console.error('Error en [handleSign]:', err);
       setGlobalError(err.message || 'Se produjo un error durante la firma. Inténtalo de nuevo.');
       setStatus('idle');
     }
