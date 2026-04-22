@@ -3,14 +3,14 @@ import { Steps } from '../components/Steps.jsx';
 import { Spinner } from '../components/Spinner.jsx';
 import { Alert } from '../components/Alert.jsx';
 import { DocumentViewer } from './DocumentViewer.jsx';
-import { CertificateSigningStep } from './CertificateSigningStep.jsx';
+import { AutofirmaSigningStep } from './AutofirmaSigningStep.jsx';
 import { SuccessPage } from './SuccessPage.jsx';
 import { ErrorPage } from './ErrorPage.jsx';
 import { getSolicitud } from '../api/signing.js';
 
 const STEPS = [
   { label: 'Revisar documento' },
-  { label: 'Firmar' },
+  { label: 'Firmar con AutoFirma' },
 ];
 
 const STEP_VIEW = 0;
@@ -130,12 +130,12 @@ export function SigningFlow({ token }) {
       <div className="card">
         <div className="card__header">
           <h1 className="card__title">
-            {currentStep === STEP_VIEW ? 'Revisa el documento' : 'Firma con tu certificado digital'}
+            {currentStep === STEP_VIEW ? 'Revisa el documento' : 'Firma con AutoFirma'}
           </h1>
           <p className="card__subtitle">
             {currentStep === STEP_VIEW
               ? 'Lee el documento detenidamente antes de firmarlo.'
-              : 'Selecciona tu certificado .p12 o .pfx e introduce tu contraseña para firmar.'}
+              : 'AutoFirma firmará el documento con tu certificado instalado.'}
           </p>
         </div>
 
@@ -148,7 +148,7 @@ export function SigningFlow({ token }) {
         )}
 
         {currentStep === STEP_SIGN && (
-          <CertificateSigningStep
+          <AutofirmaSigningStep
             token={token}
             solicitud={solicitud}
             onSuccess={(bytes) => { setSignedPdfBytes(bytes); setCurrentStep(STEP_SUCCESS); }}

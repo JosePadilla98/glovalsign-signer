@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig, loadEnv, rspack } from '@rsbuild/core';
+import { defineConfig, loadEnv } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
 
 const { publicVars, rawPublicVars } = loadEnv({ prefixes: ['PUBLIC_'] });
@@ -29,13 +29,5 @@ export default defineConfig({
       },
     },
   },
-  tools: {
-    rspack: {
-      plugins: [
-        new rspack.ProvidePlugin({
-          Buffer: ['buffer', 'Buffer'],
-        }),
-      ],
-    },
-  },
 });
+
