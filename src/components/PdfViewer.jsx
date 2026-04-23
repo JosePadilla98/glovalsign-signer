@@ -28,12 +28,17 @@ export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña', onRe
 
     async function render() {
       setStatus('loading');
+      const IS_DEV = import.meta.env.DEV;
+      const t0 = performance.now();
+      const devLog = (msg) => IS_DEV && console.debug(`[PdfViewer +${((performance.now()-t0)/1000).toFixed(2)}s] ${msg}`);
 
       try {
         // Fetch PDF bytes so auth cookies are included automatically
+        devLog('fetch() inicio…');
         const response = await fetch(url, { credentials: 'include' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const buffer = await response.arrayBuffer();
+        devLog(`fetch() fin — ${(buffer.byteLength/1024).toFixed(0)} KB`);
 
         if (cancelled) return;
 
@@ -41,11 +46,13 @@ export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña', onRe
         // without triggering a second download.
         onBytesReady?.(buffer);
 
+        devLog('pdfjs.getDocument() inicio…');
         const loadingTask = pdfjsLib.getDocument({ data: buffer });
         taskRef.current = loadingTask;
 
         const pdf = await loadingTask.promise;
         if (cancelled) return;
+        devLog(`pdfjs listo — ${pdf.numPages} páginas`);
 
         setPageCount(pdf.numPages);
 
@@ -73,12 +80,16 @@ export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña', onRe
 
           // Show the container as soon as the first page is painted
           if (i === 1 && !cancelled) {
+            devLog('página 1 pintada → onReady');
             setStatus('rendering');
             onReady?.();
           }
         }
 
-        if (!cancelled) setStatus('rendered');
+        if (!cancelled) {
+          devLog('todas las páginas renderizadas → onScrolledToBottom disponible');
+          setStatus('rendered');
+        }
       } catch (err) {
         if (!cancelled) {
           console.warn('[PdfViewer] Error rendering PDF:', err);

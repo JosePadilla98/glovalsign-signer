@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'; // useRef kept for scriptRef
 import { Alert } from '../components/Alert.jsx';
 import { Spinner } from '../components/Spinner.jsx';
+import { useDevSigningLog } from '../components/DevSigningLog.jsx';
 import {
   isAutoScriptLoaded,
   initAutoFirma,
@@ -31,15 +32,19 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
   const [scriptReady, setScriptReady] = useState(false);
   const [error, setError] = useState('');
   const scriptRef = useRef(null);
+  const { log, DevSigningLog } = useDevSigningLog();
+
   // ── Load autoscript.js dynamically on mount ─────────────────────────────
 
   useEffect(() => {
     if (isAutoScriptLoaded()) {
+      log('autoscript.js ya estaba cargado');
       setScriptReady(true);
       return;
     }
 
     setStatus('loading_script');
+    log('cargando autoscript.js…');
 
     const script = document.createElement('script');
     script.src = '/vendor/autoscript.js';
@@ -47,11 +52,13 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
     scriptRef.current = script;
 
     script.onload = () => {
+      log('autoscript.js cargado ✓');
       setScriptReady(true);
       setStatus('idle');
     };
 
     script.onerror = () => {
+      log('autoscript.js ERROR al cargar');
       setError(
         'No se pudo cargar AutoScript (/vendor/autoscript.js). ' +
         'Contacta con el administrador.',
@@ -72,11 +79,16 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
 
   async function handleSign() {
     setError('');
+    log('--- inicio firma ---');
+    log(`modo: ${isMobile ? 'MÓVIL' : 'ESCRITORIO'}`, isMobile ? `servlet: ${servletBaseUrl ?? 'no configurado'}` : 'WebSocket local');
 
     // 1. Init AutoFirma
+    log('initAutoFirma…');
     try {
       initAutoFirma(servletBaseUrl);
+      log('initAutoFirma ✓');
     } catch (err) {
+      log('initAutoFirma ERROR', err.message);
       setError(err.message);
       setStatus('error');
       return;
@@ -86,16 +98,21 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
     setStatus('signing');
     const base64Pdf = prefetchedPdfRef.current;
     if (!base64Pdf) {
+      log('PDF no disponible — bytes aún null');
       setError('El documento aún no está listo. Espera un momento y vuelve a intentarlo.');
       setStatus('error');
       return;
     }
+    log('PDF bytes listos ✓', `${(base64Pdf.length * 0.75 / 1024).toFixed(0)} KB aprox.`);
 
     // 3. Sign with AutoFirma native app
+    log('AutoScript.sign() — enviando a AutoFirma…');
     let signedBase64;
     try {
       signedBase64 = await signPdfWithAutoFirma(base64Pdf);
+      log('AutoScript.sign() completado ✓', `resultado: ${(signedBase64.length * 0.75 / 1024).toFixed(0)} KB`);
     } catch (err) {
+      log('AutoScript.sign() ERROR', err.message);
       setError(err.message);
       setStatus('error');
       return;
@@ -103,18 +120,22 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
 
     // 4. Upload signed PDF to the backend
     setStatus('uploading');
+    log('subiendo PDF firmado al backend…');
     const signedBytes = base64ToUint8Array(signedBase64);
     try {
       const result = await submitSignedDocument(token, signedBytes);
       if (!result.ok) {
+        log('subida ERROR', result.error);
         throw new Error(result.error || 'Error al enviar el documento firmado al servidor.');
       }
+      log('subida completada ✓');
     } catch (err) {
       setError(err.message);
       setStatus('error');
       return;
     }
 
+    log('=== firma completada ===');
     onSuccess(signedBytes);
   }
 
@@ -177,6 +198,8 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
       >
         {buttonLabel}
       </button>
+
+      <DevSigningLog />
     </div>
   );
 }
