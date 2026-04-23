@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Steps } from '../components/Steps.jsx';
 import { Spinner } from '../components/Spinner.jsx';
 import { Alert } from '../components/Alert.jsx';
@@ -7,6 +7,7 @@ import { AutofirmaSigningStep } from './AutofirmaSigningStep.jsx';
 import { SuccessPage } from './SuccessPage.jsx';
 import { ErrorPage } from './ErrorPage.jsx';
 import { getSolicitud } from '../api/signing.js';
+import { arrayBufferToBase64 } from '../utils/autofirma.js';
 
 const STEPS = [
   { label: 'Revisar documento' },
@@ -29,6 +30,10 @@ export function SigningFlow({ token }) {
   const [loadError, setLoadError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [signedPdfBytes, setSignedPdfBytes] = useState(null);
+  // PDF bytes captured from PdfViewer once it finishes downloading the document.
+  // PdfViewer already downloads the PDF to render it — onBytesReady lets us reuse
+  // those same bytes for AutoFirma without a second network request.
+  const prefetchedPdfRef = useRef(null);
 
   // Load signing request metadata on mount
   useEffect(() => {
@@ -144,6 +149,9 @@ export function SigningFlow({ token }) {
             token={token}
             solicitud={solicitud}
             onContinue={() => setCurrentStep(STEP_SIGN)}
+            onPdfBytesReady={(buffer) => {
+              prefetchedPdfRef.current = arrayBufferToBase64(buffer);
+            }}
           />
         )}
 
@@ -151,6 +159,7 @@ export function SigningFlow({ token }) {
           <AutofirmaSigningStep
             token={token}
             solicitud={solicitud}
+            prefetchedPdfRef={prefetchedPdfRef}
             onSuccess={(bytes) => { setSignedPdfBytes(bytes); setCurrentStep(STEP_SUCCESS); }}
           />
         )}

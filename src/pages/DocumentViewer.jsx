@@ -10,8 +10,9 @@ import { PdfViewer } from '../components/PdfViewer.jsx';
  * @param {string} props.token
  * @param {object} props.solicitud   Signing request metadata
  * @param {() => void} props.onContinue
+ * @param {(buffer: ArrayBuffer) => void} [props.onPdfBytesReady]  Forwarded to PdfViewer so the parent can reuse the downloaded bytes
  */
-export function DocumentViewer({ token, solicitud, onContinue }) {
+export function DocumentViewer({ token, solicitud, onContinue, onPdfBytesReady }) {
   const [pdfReady, setPdfReady] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
   const pdfUrl = getDocumentViewUrl(token);
@@ -51,6 +52,7 @@ export function DocumentViewer({ token, solicitud, onContinue }) {
             url={pdfUrl}
             onReady={() => setPdfReady(true)}
             onScrolledToBottom={() => setHasScrolled(true)}
+            onBytesReady={onPdfBytesReady}
           />
         </div>
       </div>

@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react'; // useRef kept for scriptRef
 import { Alert } from '../components/Alert.jsx';
 import { Spinner } from '../components/Spinner.jsx';
 import {
   isAutoScriptLoaded,
   initAutoFirma,
   signPdfWithAutoFirma,
-  arrayBufferToBase64,
   base64ToUint8Array,
 } from '../utils/autofirma.js';
-import { getDocumentViewUrl, submitSignedDocument } from '../api/signing.js';
+import { submitSignedDocument } from '../api/signing.js';
 
 const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 const servletBaseUrl = import.meta.env.PUBLIC_SERVLET_BASE_URL?.replace(/\/$/, '') || undefined;
@@ -23,15 +22,15 @@ const mobileReady = !isMobile || !!servletBaseUrl;
  * @param {object} props
  * @param {string} props.token
  * @param {object} props.solicitud  Signing request metadata from the backend
+ * @param {React.MutableRefObject<string|null>} props.prefetchedPdfRef  Pre-fetched PDF base64 (set by SigningFlow during step 1)
  * @param {(bytes: Uint8Array) => void} props.onSuccess
  */
-export function AutofirmaSigningStep({ token, solicitud, onSuccess }) {
+export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuccess }) {
   // 'idle' | 'loading_script' | 'signing' | 'uploading' | 'error'
   const [status, setStatus] = useState('idle');
   const [scriptReady, setScriptReady] = useState(false);
   const [error, setError] = useState('');
   const scriptRef = useRef(null);
-
   // ── Load autoscript.js dynamically on mount ─────────────────────────────
 
   useEffect(() => {
@@ -83,19 +82,11 @@ export function AutofirmaSigningStep({ token, solicitud, onSuccess }) {
       return;
     }
 
-    // 2. Fetch original PDF
+    // 2. Get pre-fetched PDF bytes (captured by PdfViewer during step 1 — no extra download needed)
     setStatus('signing');
-    let base64Pdf;
-    try {
-      const pdfUrl = getDocumentViewUrl(token);
-      const response = await fetch(pdfUrl);
-      if (!response.ok) {
-        throw new Error(`No se pudo descargar el documento (HTTP ${response.status}).`);
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      base64Pdf = arrayBufferToBase64(arrayBuffer);
-    } catch (err) {
-      setError(err.message);
+    const base64Pdf = prefetchedPdfRef.current;
+    if (!base64Pdf) {
+      setError('El documento aún no está listo. Espera un momento y vuelve a intentarlo.');
       setStatus('error');
       return;
     }

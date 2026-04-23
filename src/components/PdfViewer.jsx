@@ -14,8 +14,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.mjs';
  * @param {string}   [props.fallbackLabel]        Label for the "open in new tab" button
  * @param {Function} [props.onReady]              Called when the first page is painted
  * @param {Function} [props.onScrolledToBottom]   Called when user reaches the last page
+ * @param {Function} [props.onBytesReady]         Called with the raw ArrayBuffer once downloaded — lets the caller reuse the bytes (e.g. for signing) without a second network request
  */
-export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña', onReady, onScrolledToBottom }) {
+export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña', onReady, onScrolledToBottom, onBytesReady }) {
   const containerRef = useRef(null);
   // 'loading' → 'rendering' (first page done, container visible) → 'rendered' | 'error'
   const [status, setStatus] = useState('loading');
@@ -35,6 +36,10 @@ export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña', onRe
         const buffer = await response.arrayBuffer();
 
         if (cancelled) return;
+
+        // Expose raw bytes to parent so they can be reused (e.g. for AutoFirma signing)
+        // without triggering a second download.
+        onBytesReady?.(buffer);
 
         const loadingTask = pdfjsLib.getDocument({ data: buffer });
         taskRef.current = loadingTask;
