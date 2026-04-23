@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { getDocumentViewUrl } from '../api/signing.js';
 import { PdfViewer } from '../components/PdfViewer.jsx';
 
@@ -11,6 +12,8 @@ import { PdfViewer } from '../components/PdfViewer.jsx';
  * @param {() => void} props.onContinue
  */
 export function DocumentViewer({ token, solicitud, onContinue }) {
+  const [pdfReady, setPdfReady] = useState(false);
+  const [hasScrolled, setHasScrolled] = useState(false);
   const pdfUrl = getDocumentViewUrl(token);
   const { nombre_firmante, tipo_documento, numero_expediente } = solicitud?.datos_documento ?? {};
 
@@ -44,14 +47,28 @@ export function DocumentViewer({ token, solicitud, onContinue }) {
       <div className="section">
         <h2 className="section__title">Documento a firmar</h2>
         <div className="pdf-viewer">
-          <PdfViewer url={pdfUrl} />
+          <PdfViewer
+            url={pdfUrl}
+            onReady={() => setPdfReady(true)}
+            onScrolledToBottom={() => setHasScrolled(true)}
+          />
         </div>
       </div>
 
       <div className="divider" />
 
-      <button type="button" className="btn btn--primary btn--lg btn--full" onClick={onContinue}>
-        He leído el documento · Continuar con la firma →
+      <button
+        type="button"
+        className="btn btn--primary btn--lg btn--full"
+        onClick={onContinue}
+        disabled={!hasScrolled}
+        style={{ whiteSpace: 'normal', lineHeight: '1.4' }}
+      >
+        {!pdfReady
+          ? 'Cargando documento…'
+          : !hasScrolled
+          ? '↓ Desplázate hasta el final para continuar'
+          : 'He leído el documento · Continuar con la firma →'}
       </button>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { Spinner } from './Spinner.jsx';
 
 // Serve worker locally (public/vendor/pdf.worker.min.mjs)
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.mjs';
@@ -9,10 +10,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.mjs';
  * Falls back gracefully if loading fails.
  *
  * @param {object}  props
- * @param {string}  props.url        URL of the PDF to render
- * @param {string}  [props.fallbackLabel]  Label for the "open in new tab" button
+ * @param {string}   props.url                  URL of the PDF to render
+ * @param {string}   [props.fallbackLabel]        Label for the "open in new tab" button
+ * @param {Function} [props.onReady]              Called when the first page is painted
+ * @param {Function} [props.onScrolledToBottom]   Called when user reaches the last page
  */
-export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña' }) {
+export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña', onReady, onScrolledToBottom }) {
   const containerRef = useRef(null);
   // 'loading' → 'rendering' (first page done, container visible) → 'rendered' | 'error'
   const [status, setStatus] = useState('loading');
@@ -64,7 +67,10 @@ export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña' }) {
           await page.render({ canvasContext: ctx, viewport }).promise;
 
           // Show the container as soon as the first page is painted
-          if (i === 1 && !cancelled) setStatus('rendering');
+          if (i === 1 && !cancelled) {
+            setStatus('rendering');
+            onReady?.();
+          }
         }
 
         if (!cancelled) setStatus('rendered');
@@ -84,13 +90,28 @@ export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña' }) {
     };
   }, [url]);
 
+  // Detect scroll-to-bottom; also fires immediately if content fits without scrolling
+  useEffect(() => {
+    if (status !== 'rendering' && status !== 'rendered') return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    function checkBottom() {
+      if (container.scrollHeight - container.scrollTop - container.clientHeight < 30) {
+        onScrolledToBottom?.();
+      }
+    }
+
+    container.addEventListener('scroll', checkBottom, { passive: true });
+    // When all pages are done, unlock immediately if no scrollbar is needed
+    if (status === 'rendered') checkBottom();
+
+    return () => container.removeEventListener('scroll', checkBottom);
+  }, [status, onScrolledToBottom]);
+
   return (
     <div>
-      {status === 'loading' && (
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          Cargando documento…
-        </div>
-      )}
+      {status === 'loading' && <Spinner label="Cargando documento…" />}
 
       {status === 'error' && (
         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
