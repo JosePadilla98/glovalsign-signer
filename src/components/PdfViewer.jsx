@@ -90,9 +90,10 @@ export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña', onRe
     };
   }, [url]);
 
-  // Detect scroll-to-bottom; also fires immediately if content fits without scrolling
+  // Detect scroll-to-bottom; only active once ALL pages are fully rendered.
+  // Also fires immediately if the content fits on screen without scrolling.
   useEffect(() => {
-    if (status !== 'rendering' && status !== 'rendered') return;
+    if (status !== 'rendered') return;
     const container = containerRef.current;
     if (!container) return;
 
@@ -103,8 +104,8 @@ export function PdfViewer({ url, fallbackLabel = 'Abrir en nueva pestaña', onRe
     }
 
     container.addEventListener('scroll', checkBottom, { passive: true });
-    // When all pages are done, unlock immediately if no scrollbar is needed
-    if (status === 'rendered') checkBottom();
+    // Unlock immediately if no scrollbar is needed
+    checkBottom();
 
     return () => container.removeEventListener('scroll', checkBottom);
   }, [status, onScrolledToBottom]);
