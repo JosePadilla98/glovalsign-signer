@@ -64,43 +64,45 @@ function ValidationChecklist({ validating, result }) {
 
   return (
     <ul style={CHECK_STYLES.list}>
-      <CheckItem
-        state={isPdf ? 'ok' : 'error'}
-        label="Formato PDF"
-        detail={isPdf ? 'Archivo PDF válido' : 'El archivo no es un PDF válido'}
-      />
-      {isPdf && (
+      {isPdf !== null && (
+        <CheckItem
+          state={isPdf ? 'ok' : 'error'}
+          label="Formato PDF"
+          detail={isPdf ? 'Archivo PDF válido' : 'El archivo no es un PDF válido'}
+        />
+      )}
+      {isPdf !== false && (
         <>
-          <CheckItem
-            state={identityOk === true ? 'ok' : 'error'}
-            label="Documento correcto"
-            detail={
-              identityOk === true
-                ? 'Corresponde al documento original'
-                : identityOk === false
-                ? 'No corresponde al documento enviado para firmar'
-                : 'No se pudo verificar la identidad del documento — vuelve al paso anterior y carga el documento de nuevo'
-            }
-          />
-          <CheckItem
-            state={signatureOk ? 'ok' : 'error'}
-            label="Firma digital"
-            detail={
-              signatureOk
-                ? 'Contiene firma digital'
-                : 'No se detecta ninguna firma digital en el PDF'
-            }
-          />
-          {signatureOk && (
+          {identityOk !== null && (
             <CheckItem
-              state={byteRangeOk === true ? 'ok' : 'error'}
+              state={identityOk ? 'ok' : 'error'}
+              label="Documento correcto"
+              detail={
+                identityOk
+                  ? 'Corresponde al documento original'
+                  : 'No corresponde al documento enviado para firmar'
+              }
+            />
+          )}
+          {signatureOk !== null && (
+            <CheckItem
+              state={signatureOk ? 'ok' : 'error'}
+              label="Firma digital"
+              detail={
+                signatureOk
+                  ? 'Contiene firma digital'
+                  : 'No se detecta ninguna firma digital en el PDF'
+              }
+            />
+          )}
+          {byteRangeOk !== null && (
+            <CheckItem
+              state={byteRangeOk ? 'ok' : 'error'}
               label="Integridad de la firma"
               detail={
-                byteRangeOk === true
-                  ? 'La firma cubre el documento original completo'
-                  : byteRangeOk === false
-                  ? 'La firma no cubre el documento completo — posible adulteración'
-                  : 'No se pudo verificar la cobertura de la firma — vuelve al paso anterior y carga el documento de nuevo'
+                byteRangeOk
+                  ? 'La firma cubre el documento completo'
+                  : 'La firma no cubre el documento completo — posible adulteración'
               }
             />
           )}
@@ -220,14 +222,14 @@ export function ManualUploadStep({ token, fileName, onSuccess }) {
   const isUploading = status === 'uploading';
   const isBusy = isValidating || isUploading;
 
-  // Submit is allowed ONLY when every single check is explicitly true.
-  // null (skipped/unavailable) and false both block submission — no exceptions.
+  // Submit is allowed when no enabled check has failed (=== false).
+  // null = check disabled = no blocker.
   const validationPassed =
     validation !== null &&
-    validation.isPdf === true &&
-    validation.identityOk === true &&
-    validation.signatureOk === true &&
-    validation.byteRangeOk === true;
+    validation.isPdf !== false &&
+    validation.identityOk !== false &&
+    validation.signatureOk !== false &&
+    validation.byteRangeOk !== false;
   const canSubmit = !!file && validationPassed && !isBusy;
 
   // Drop zone border colour reflects current state
