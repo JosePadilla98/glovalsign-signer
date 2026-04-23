@@ -3,7 +3,7 @@ import { Steps } from '../components/Steps.jsx';
 import { Spinner } from '../components/Spinner.jsx';
 import { Alert } from '../components/Alert.jsx';
 import { DocumentViewer } from './DocumentViewer.jsx';
-import { AutofirmaSigningStep } from './AutofirmaSigningStep.jsx';
+import { SigningStep } from './AutofirmaSigningStep.jsx';
 import { SuccessPage } from './SuccessPage.jsx';
 import { ErrorPage } from './ErrorPage.jsx';
 import { getSolicitud } from '../api/signing.js';
@@ -11,7 +11,7 @@ import { arrayBufferToBase64 } from '../utils/autofirma.js';
 
 const STEPS = [
   { label: 'Revisar documento' },
-  { label: 'Firmar con AutoFirma' },
+  { label: 'Firmar documento' },
 ];
 
 const STEP_VIEW = 0;
@@ -135,12 +135,12 @@ export function SigningFlow({ token }) {
       <div className="card">
         <div className="card__header">
           <h1 className="card__title">
-            {currentStep === STEP_VIEW ? 'Revisa el documento' : 'Firma con AutoFirma'}
+            {currentStep === STEP_VIEW ? 'Revisa el documento' : 'Firma el documento'}
           </h1>
           <p className="card__subtitle">
             {currentStep === STEP_VIEW
               ? 'Lee el documento detenidamente antes de firmarlo.'
-              : 'AutoFirma firmará el documento con tu certificado instalado.'}
+              : 'Elige cómo quieres firmar y completa el proceso.'}
           </p>
         </div>
 
@@ -156,7 +156,7 @@ export function SigningFlow({ token }) {
         )}
 
         {currentStep === STEP_SIGN && (
-          <AutofirmaSigningStep
+          <SigningStep
             token={token}
             solicitud={solicitud}
             prefetchedPdfRef={prefetchedPdfRef}

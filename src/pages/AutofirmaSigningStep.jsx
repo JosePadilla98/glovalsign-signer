@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'; // useRef kept for scriptRe
 import { Alert } from '../components/Alert.jsx';
 import { Spinner } from '../components/Spinner.jsx';
 import { useDevSigningLog } from '../components/DevSigningLog.jsx';
+import { ManualUploadStep } from './ManualUploadStep.jsx';
 import {
   isAutoScriptLoaded,
   initAutoFirma,
@@ -203,3 +204,105 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SigningStep — wrapper with tab support
+//
+// Props:
+//   signing_methods: { autofirma: boolean, manual_upload: boolean }
+//   (from solicitud.signing_methods returned by the backend)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TAB_STYLES = {
+  tabBar: {
+    display: 'flex',
+    borderBottom: '2px solid #e2e8f0',
+    marginBottom: '1.5rem',
+    gap: '0',
+  },
+  tab: (active) => ({
+    padding: '0.6rem 1.25rem',
+    background: 'none',
+    border: 'none',
+    borderBottom: `2px solid ${active ? 'var(--color-primary, #2563eb)' : 'transparent'}`,
+    marginBottom: '-2px',
+    color: active ? 'var(--color-primary, #2563eb)' : 'var(--color-text-muted, #64748b)',
+    fontWeight: active ? 600 : 400,
+    cursor: 'pointer',
+    fontSize: '0.9rem',
+    transition: 'all 0.15s',
+  }),
+};
+
+/**
+ * Top-level signing step component with optional tab selection.
+ *
+ * When only one method is enabled it renders that method directly (no tabs).
+ * When both are enabled, shows a tab bar.
+ *
+ * @param {object} props
+ * @param {string} props.token
+ * @param {object} props.solicitud
+ * @param {React.MutableRefObject<string|null>} props.prefetchedPdfRef
+ * @param {(bytes: Uint8Array) => void} props.onSuccess
+ */
+export function SigningStep({ token, solicitud, prefetchedPdfRef, onSuccess }) {
+  const methods = solicitud?.signing_methods ?? { autofirma: true, manual_upload: false };
+  const hasAutofirma = methods.autofirma;
+  const hasManual = methods.manual_upload;
+
+  // Default active tab: autofirma first if available, else manual_upload
+  const defaultTab = hasAutofirma ? 'autofirma' : 'manual_upload';
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  const showTabs = hasAutofirma && hasManual;
+
+  // Edge case: no method enabled
+  if (!hasAutofirma && !hasManual) {
+    return (
+      <Alert
+        type="error"
+        message="No hay métodos de firma habilitados. Contacta con el administrador."
+      />
+    );
+  }
+
+  return (
+    <div>
+      {showTabs && (
+        <div style={TAB_STYLES.tabBar}>
+          <button
+            type="button"
+            style={TAB_STYLES.tab(activeTab === 'autofirma')}
+            onClick={() => setActiveTab('autofirma')}
+          >
+            Firmar con AutoFirma
+          </button>
+          <button
+            type="button"
+            style={TAB_STYLES.tab(activeTab === 'manual_upload')}
+            onClick={() => setActiveTab('manual_upload')}
+          >
+            Subir PDF firmado
+          </button>
+        </div>
+      )}
+
+      {(!showTabs ? hasAutofirma : activeTab === 'autofirma') && (
+        <AutofirmaSigningStep
+          token={token}
+          solicitud={solicitud}
+          prefetchedPdfRef={prefetchedPdfRef}
+          onSuccess={onSuccess}
+        />
+      )}
+
+      {(!showTabs ? hasManual : activeTab === 'manual_upload') && (
+        <ManualUploadStep
+          token={token}
+          onSuccess={onSuccess}
+        />
+      )}
+    </div>
+  );
+}
+
