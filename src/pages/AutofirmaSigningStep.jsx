@@ -124,7 +124,7 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
     log('subiendo PDF firmado al backend…');
     const signedBytes = base64ToUint8Array(signedBase64);
     try {
-      const result = await submitSignedDocument(token, signedBytes);
+      const result = await submitSignedDocument(token, signedBytes, 'autofirma');
       if (!result.ok) {
         log('subida ERROR', result.error);
         throw new Error(result.error || 'Error al enviar el documento firmado al servidor.');
@@ -216,21 +216,27 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
 const TAB_STYLES = {
   tabBar: {
     display: 'flex',
-    borderBottom: '2px solid #e2e8f0',
-    marginBottom: '1.5rem',
-    gap: '0',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    marginBottom: '1.75rem',
+    padding: '0.25rem',
+    background: '#f1f5f9',
+    borderRadius: '10px',
   },
   tab: (active) => ({
-    padding: '0.6rem 1.25rem',
-    background: 'none',
+    flex: '1',
+    maxWidth: '220px',
+    padding: '0.6rem 1rem',
+    background: active ? '#ffffff' : 'transparent',
     border: 'none',
-    borderBottom: `2px solid ${active ? 'var(--color-primary, #2563eb)' : 'transparent'}`,
-    marginBottom: '-2px',
+    borderRadius: '8px',
     color: active ? 'var(--color-primary, #2563eb)' : 'var(--color-text-muted, #64748b)',
     fontWeight: active ? 600 : 400,
     cursor: 'pointer',
-    fontSize: '0.9rem',
-    transition: 'all 0.15s',
+    fontSize: '0.875rem',
+    textAlign: 'center',
+    boxShadow: active ? '0 1px 4px rgba(0,0,0,0.12)' : 'none',
+    transition: 'all 0.18s',
   }),
 };
 
@@ -299,6 +305,7 @@ export function SigningStep({ token, solicitud, prefetchedPdfRef, onSuccess }) {
       {(!showTabs ? hasManual : activeTab === 'manual_upload') && (
         <ManualUploadStep
           token={token}
+          fileName={solicitud?.datos_documento?.nombre_documento ?? 'documento.pdf'}
           onSuccess={onSuccess}
         />
       )}

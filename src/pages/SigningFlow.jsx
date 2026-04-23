@@ -150,6 +150,8 @@ export function SigningFlow({ token }) {
             solicitud={solicitud}
             onContinue={() => setCurrentStep(STEP_SIGN)}
             onPdfBytesReady={(buffer) => {
+              // arrayBufferToBase64 reads the buffer synchronously before pdfjs-dist can
+              // transfer it to the worker thread (which would detach and zero-out the buffer).
               prefetchedPdfRef.current = arrayBufferToBase64(buffer);
             }}
           />

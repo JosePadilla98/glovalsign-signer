@@ -1,33 +1,176 @@
 import { useRef, useState } from 'react';
 import { Alert } from '../components/Alert.jsx';
 import { Spinner } from '../components/Spinner.jsx';
-import { submitSignedDocument } from '../api/signing.js';
+import { submitSignedDocument, validatePdf, getDocumentViewUrl } from '../api/signing.js';
+
+// ---------------------------------------------------------------------------
+// ValidationChecklist — shows the result of each check after file selection
+// ---------------------------------------------------------------------------
+
+const CHECK_STYLES = {
+  list: {
+    listStyle: 'none',
+    margin: '0 0 1.25rem',
+    padding: '0.75rem 1rem',
+    background: '#f8fafc',
+    borderRadius: '8px',
+    border: '1px solid #e2e8f0',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+  },
+  item: (state) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '0.85rem',
+    color:
+      state === 'ok' ? '#15803d'
+      : state === 'error' ? '#b91c1c'
+      : state === 'skipped' ? '#64748b'
+      : '#64748b',
+  }),
+  icon: (state) =>
+    state === 'ok' ? '✅'
+    : state === 'error' ? '❌'
+    : state === 'skipped' ? '⚠️'
+    : '⏳',
+};
+
+function CheckItem({ state, label, detail }) {
+  return (
+    <li style={CHECK_STYLES.item(state)}>
+      <span style={{ fontSize: '0.9rem', lineHeight: 1 }}>{CHECK_STYLES.icon(state)}</span>
+      <span>
+        <strong>{label}</strong>
+        {detail && <span style={{ marginLeft: '0.35rem', opacity: 0.8 }}>— {detail}</span>}
+      </span>
+    </li>
+  );
+}
+
+function ValidationChecklist({ validating, result }) {
+  if (!validating && !result) return null;
+
+  if (validating) {
+    return (
+      <ul style={CHECK_STYLES.list}>
+        <CheckItem state="pending" label="Verificando documento…" />
+      </ul>
+    );
+  }
+
+  const { isPdf, identityOk, signatureOk, byteRangeOk } = result;
+
+  return (
+    <ul style={CHECK_STYLES.list}>
+      <CheckItem
+        state={isPdf ? 'ok' : 'error'}
+        label="Formato PDF"
+        detail={isPdf ? 'Archivo PDF válido' : 'El archivo no es un PDF válido'}
+      />
+      {isPdf && (
+        <>
+          <CheckItem
+            state={identityOk === true ? 'ok' : 'error'}
+            label="Documento correcto"
+            detail={
+              identityOk === true
+                ? 'Corresponde al documento original'
+                : identityOk === false
+                ? 'No corresponde al documento enviado para firmar'
+                : 'No se pudo verificar la identidad del documento — vuelve al paso anterior y carga el documento de nuevo'
+            }
+          />
+          <CheckItem
+            state={signatureOk ? 'ok' : 'error'}
+            label="Firma digital"
+            detail={
+              signatureOk
+                ? 'Contiene firma digital'
+                : 'No se detecta ninguna firma digital en el PDF'
+            }
+          />
+          {signatureOk && (
+            <CheckItem
+              state={byteRangeOk === true ? 'ok' : 'error'}
+              label="Integridad de la firma"
+              detail={
+                byteRangeOk === true
+                  ? 'La firma cubre el documento original completo'
+                  : byteRangeOk === false
+                  ? 'La firma no cubre el documento completo — posible adulteración'
+                  : 'No se pudo verificar la cobertura de la firma — vuelve al paso anterior y carga el documento de nuevo'
+              }
+            />
+          )}
+        </>
+      )}
+    </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ManualUploadStep
+// ---------------------------------------------------------------------------
 
 /**
  * Step 2 (alternative) — Manual PDF upload.
  *
- * The user drops or selects a pre-signed PDF, then submits it to the backend.
+ * The user drops or selects a pre-signed PDF. The file is validated by the
+ * backend (single source of truth for all 4 checks) before submission.
  *
  * @param {object} props
  * @param {string} props.token
  * @param {(bytes: Uint8Array) => void} props.onSuccess
  */
-export function ManualUploadStep({ token, onSuccess }) {
+export function ManualUploadStep({ token, fileName, onSuccess }) {
   const [file, setFile] = useState(null);
   const [dragging, setDragging] = useState(false);
-  // 'idle' | 'uploading' | 'error'
+  // 'idle' | 'validating' | 'uploading' | 'error'
   const [status, setStatus] = useState('idle');
-  const [error, setError] = useState('');
+  const [validation, setValidation] = useState(null);
+  const [uploadError, setUploadError] = useState('');
+  // Keep a reference to the file's bytes to avoid re-reading on submit
+  const fileBytesRef = useRef(null);
   const inputRef = useRef(null);
 
-  function acceptFile(f) {
+  async function acceptFile(f) {
     if (!f) return;
+
+    // Quick extension/MIME check before reading
     if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
-      setError('El archivo debe ser un PDF.');
+      setFile(f);
+      setValidation({ isPdf: false, identityOk: false, signatureOk: false, byteRangeOk: false });
+      fileBytesRef.current = null;
       return;
     }
-    setError('');
+
     setFile(f);
+    setValidation(null);
+    setUploadError('');
+    setStatus('validating');
+    fileBytesRef.current = null;
+
+    try {
+      const buffer = await f.arrayBuffer();
+      const uploadedBytes = new Uint8Array(buffer);
+      fileBytesRef.current = uploadedBytes;
+
+      const apiResult = await validatePdf(token, uploadedBytes);
+      if (apiResult.ok) {
+        setValidation(apiResult.data);
+      } else {
+        // Network or server error — treat as full validation failure so submission is blocked
+        setValidation({ isPdf: false, identityOk: false, signatureOk: false, byteRangeOk: false });
+        setUploadError(apiResult.error || 'Error al validar el documento. Inténtalo de nuevo.');
+      }
+    } catch (_err) {
+      setValidation({ isPdf: false, identityOk: false, signatureOk: false, byteRangeOk: false });
+      setUploadError('Error inesperado al validar el documento.');
+    } finally {
+      setStatus('idle');
+    }
   }
 
   function onInputChange(e) {
@@ -50,32 +193,83 @@ export function ManualUploadStep({ token, onSuccess }) {
   }
 
   async function handleSubmit() {
-    if (!file) return;
-    setError('');
+    if (!canSubmit) return;
+    setUploadError('');
     setStatus('uploading');
 
     try {
-      const buffer = await file.arrayBuffer();
-      const signedBytes = new Uint8Array(buffer);
-      const result = await submitSignedDocument(token, signedBytes);
+      // Re-use bytes already read during validation; fall back to re-reading if needed
+      let signedBytes = fileBytesRef.current;
+      if (!signedBytes) {
+        const buffer = await file.arrayBuffer();
+        signedBytes = new Uint8Array(buffer);
+      }
+
+      const result = await submitSignedDocument(token, signedBytes, 'manual_upload');
       if (!result.ok) {
         throw new Error(result.error || 'Error al enviar el documento firmado al servidor.');
       }
       onSuccess(signedBytes);
     } catch (err) {
-      setError(err.message);
+      setUploadError(err.message);
       setStatus('error');
     }
   }
 
-  const isBusy = status === 'uploading';
+  const isValidating = status === 'validating';
+  const isUploading = status === 'uploading';
+  const isBusy = isValidating || isUploading;
+
+  // Submit is allowed ONLY when every single check is explicitly true.
+  // null (skipped/unavailable) and false both block submission — no exceptions.
+  const validationPassed =
+    validation !== null &&
+    validation.isPdf === true &&
+    validation.identityOk === true &&
+    validation.signatureOk === true &&
+    validation.byteRangeOk === true;
+  const canSubmit = !!file && validationPassed && !isBusy;
+
+  // Drop zone border colour reflects current state
+  const dropBorderColor =
+    dragging ? 'var(--color-primary, #2563eb)'
+    : !file ? '#cbd5e1'
+    : validation === null || isValidating ? '#94a3b8'
+    : validationPassed ? '#16a34a'
+    : '#dc2626';
+
+  const dropBg =
+    dragging ? 'rgba(37,99,235,0.05)'
+    : validationPassed ? 'rgba(22,163,74,0.04)'
+    : 'transparent';
 
   return (
     <div>
-      <p style={{ marginBottom: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-        Si ya tienes el PDF firmado digitalmente, arrástralo aquí o selecciónalo desde tu
-        dispositivo y pulsa <strong>Enviar</strong>.
+      <p style={{ marginBottom: '1.25rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+        Firma el documento con tu herramienta habitual, luego arrástralo aquí o selecciónalo
+        desde tu dispositivo y pulsa <strong>Enviar</strong>.
       </p>
+
+      {/* Download original document */}
+      <a
+        href={getDocumentViewUrl(token)}
+        download={fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          marginBottom: '1.25rem',
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          color: 'var(--color-primary, #2563eb)',
+          textDecoration: 'none',
+          border: '1px solid currentColor',
+          borderRadius: '6px',
+          padding: '0.4rem 0.85rem',
+        }}
+      >
+        ⬇️ Descargar documento original
+      </a>
 
       {/* Drop zone */}
       <div
@@ -84,14 +278,14 @@ export function ManualUploadStep({ token, onSuccess }) {
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         style={{
-          border: `2px dashed ${dragging ? 'var(--color-primary, #2563eb)' : file ? 'var(--color-success, #16a34a)' : '#cbd5e1'}`,
+          border: `2px dashed ${dropBorderColor}`,
           borderRadius: '8px',
           padding: '2rem 1rem',
           textAlign: 'center',
           cursor: isBusy ? 'not-allowed' : 'pointer',
-          background: dragging ? 'rgba(37,99,235,0.05)' : file ? 'rgba(22,163,74,0.04)' : 'transparent',
+          background: dropBg,
           transition: 'border-color 0.15s, background 0.15s',
-          marginBottom: '1.25rem',
+          marginBottom: '1rem',
           userSelect: 'none',
         }}
       >
@@ -108,7 +302,8 @@ export function ManualUploadStep({ token, onSuccess }) {
             <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>📄</div>
             <div style={{ fontWeight: 600, wordBreak: 'break-all' }}>{file.name}</div>
             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
-              {(file.size / 1024).toFixed(0)} KB · Haz clic para cambiar
+              {(file.size / 1024).toFixed(0)} KB
+              {!isBusy && ' · Haz clic para cambiar'}
             </div>
           </div>
         ) : (
@@ -122,11 +317,20 @@ export function ManualUploadStep({ token, onSuccess }) {
         )}
       </div>
 
-      {error && <Alert type="error" message={error} />}
+      {/* Validation checklist */}
+      <ValidationChecklist validating={isValidating} result={validation} />
 
-      {isBusy && (
+      {/* Upload spinner */}
+      {isUploading && (
         <div style={{ marginBottom: '1rem' }}>
           <Spinner label="Enviando documento firmado…" />
+        </div>
+      )}
+
+      {/* Upload error */}
+      {uploadError && (
+        <div style={{ marginBottom: '1rem' }}>
+          <Alert type="error" message={uploadError} />
         </div>
       )}
 
@@ -134,9 +338,9 @@ export function ManualUploadStep({ token, onSuccess }) {
         type="button"
         className="btn btn--primary btn--lg btn--full"
         onClick={handleSubmit}
-        disabled={!file || isBusy}
+        disabled={!canSubmit}
       >
-        {isBusy ? 'Enviando…' : 'Enviar documento firmado'}
+        {isUploading ? 'Enviando…' : 'Enviar documento firmado'}
       </button>
     </div>
   );
