@@ -1,4 +1,5 @@
 import { getDocumentViewUrl } from '../api/signing.js';
+import { PdfViewer } from '../components/PdfViewer.jsx';
 
 /**
  * Step 1 — PDF Viewer.
@@ -43,24 +44,7 @@ export function DocumentViewer({ token, solicitud, onContinue }) {
       <div className="section">
         <h2 className="section__title">Documento a firmar</h2>
         <div className="pdf-viewer">
-          <div className="pdf-viewer__toolbar">
-            <span>Vista previa del documento</span>
-            <a
-              href={pdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn--secondary"
-              style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}
-            >
-              Abrir en nueva pestaña
-            </a>
-          </div>
-          <iframe
-            className="pdf-viewer__iframe"
-            src={pdfUrl}
-            title="Documento a firmar"
-            aria-label="Vista previa del documento PDF"
-          />
+          <PdfViewer url={pdfUrl} />
         </div>
       </div>
 

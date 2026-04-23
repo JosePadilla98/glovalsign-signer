@@ -2,7 +2,7 @@
 import { defineConfig, loadEnv } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
 
-const { publicVars, rawPublicVars } = loadEnv({ prefixes: ['PUBLIC_'] });
+const { publicVars } = loadEnv({ prefixes: ['PUBLIC_'] });
 const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
 
 // URL del servidor Tomcat con los WARs del servidor intermedio de AutoFirma.
@@ -29,10 +29,17 @@ if (autofirmaServicesTarget) {
     target: autofirmaServicesTarget,
     changeOrigin: true,
   };
+  proxy['/afirma-server-triphase-signer'] = {
+    target: autofirmaServicesTarget,
+    changeOrigin: true,
+  };
 }
 
 export default defineConfig({
   plugins: [pluginReact()],
+  source: {
+    define: publicVars,
+  },
   html: {
     title: 'Glovalsign - Firma de documentos',
     favicon: './public/favicon.png',

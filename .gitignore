@@ -3,6 +3,9 @@
 *.local
 *.log*
 
+# Env (valores reales, nunca a git — usa .env.example como plantilla)
+.env
+
 # Dist
 node_modules
 dist/

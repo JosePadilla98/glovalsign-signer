@@ -1,6 +1,25 @@
 const SIGN_ALGORITHM = 'SHA256withRSA';
 const SIGN_FORMAT = 'PAdES';
-const SIGN_PARAMS = 'format=PAdES';
+
+// Firma trifásica: el servidor realiza las fases PRE y POST; al dispositivo solo viaja
+// el hash del documento (mucho más rápido con PDFs grandes). Se activa con
+// PUBLIC_TRIPHASE_SIGNING=true. Requiere el WAR afirma-server-triphase-signer en Tomcat.
+const _triphaseEnabled = import.meta.env.PUBLIC_TRIPHASE_SIGNING === 'true';
+const _servletBase = import.meta.env.PUBLIC_SERVLET_BASE_URL;
+const SIGN_PARAMS = _triphaseEnabled && _servletBase
+  ? `format=PAdES\nserverUrl=${_servletBase}/afirma-server-triphase-signer/SignatureService`
+  : 'format=PAdES';
+
+console.info(
+  `[AutoFirma] Modo de firma: ${_triphaseEnabled && _servletBase ? 'TRIFÁSICO' : 'SIMPLE'}`,
+  _triphaseEnabled && _servletBase
+    ? `| serverUrl: ${_servletBase}/afirma-server-triphase-signer/SignatureService`
+    : _triphaseEnabled
+      ? '| (trifásico desactivado: PUBLIC_SERVLET_BASE_URL vacío)'
+      : '',
+);
+
+
 
 /**
  * Returns true if autoscript.js has been loaded and AutoScript is available on window.
