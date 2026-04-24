@@ -166,7 +166,7 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
 
   return (
     <div>
-      {true && (
+      {showInstallModal && (
         <AutofirmaInstallModal
           onClose={() => setShowInstallModal(false)}
           onRetry={() => { setShowInstallModal(false); handleSign(); }}
