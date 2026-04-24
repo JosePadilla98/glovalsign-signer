@@ -19,6 +19,24 @@ console.info(
       : '',
 );
 
+/**
+ * Returns a human-readable description of the current signing mode (simple vs. triphase).
+ * Useful for the dev signing log overlay.
+ * @returns {{ mode: 'TRIFÁSICO' | 'SIMPLE', detail: string }}
+ */
+export function getSignModeInfo() {
+  if (_triphaseEnabled && _servletBase) {
+    return {
+      mode: 'TRIFÁSICO',
+      detail: `serverUrl: ${_servletBase}/afirma-server-triphase-signer/SignatureService`,
+    };
+  }
+  if (_triphaseEnabled && !_servletBase) {
+    return { mode: 'SIMPLE', detail: '(trifásico desactivado: PUBLIC_SERVLET_BASE_URL vacío)' };
+  }
+  return { mode: 'SIMPLE', detail: 'WebSocket local' };
+}
+
 
 
 /**

@@ -78,7 +78,7 @@ function detectPlatform() {
   return null;
 }
 
-export function AutofirmaInstallModal({ onClose, onRetry }) {
+export function AutofirmaInstallModal({ onClose }) {
   const platformKey = detectPlatform();
   const platform = platformKey ? PLATFORMS[platformKey] : null;
 
@@ -114,42 +114,30 @@ export function AutofirmaInstallModal({ onClose, onRetry }) {
                   <li key={i}>{step}</li>
                 ))}
               </ol>
-              <a
-                href={platform.downloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn--primary btn--lg btn--full"
-                style={{ marginTop: '1.25rem', textDecoration: 'none' }}
-              >
-                Descargar AutoFirma para {platform.label}
-              </a>
             </>
           ) : (
             <>
               <p style={{ marginBottom: '1rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
                 No se pudo detectar tu sistema operativo automáticamente.
-                Accede a la página oficial de descargas:
+                Usa el botón de abajo para ir a la página oficial de descargas.
               </p>
-              <a
-                href={DOWNLOAD_PAGE}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn--primary btn--lg btn--full"
-                style={{ textDecoration: 'none' }}
-              >
-                Página de descargas de AutoFirma
-              </a>
             </>
           )}
         </div>
 
         <div className="modal__footer">
           <button type="button" className="btn btn--secondary" onClick={onClose}>
-            Cancelar
+            Cerrar
           </button>
-          <button type="button" className="btn btn--primary" onClick={onRetry}>
-            Ya lo tengo instalado — Reintentar
-          </button>
+          <a
+            href={platform ? platform.downloadUrl : DOWNLOAD_PAGE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn--primary"
+            style={{ textDecoration: 'none' }}
+          >
+            Ir a descargar
+          </a>
         </div>
       </div>
     </div>

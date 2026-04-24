@@ -10,6 +10,7 @@ import {
   signPdfWithAutoFirma,
   base64ToUint8Array,
   isNotInstalledError,
+  getSignModeInfo,
 } from '../utils/autofirma.js';
 import { submitSignedDocument } from '../api/signing.js';
 
@@ -84,7 +85,9 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
   async function handleSign() {
     setError('');
     log('--- inicio firma ---');
-    log(`modo: ${isMobile ? 'MÓVIL' : 'ESCRITORIO'}`, isMobile ? `servlet: ${servletBaseUrl ?? 'no configurado'}` : 'WebSocket local');
+    log(`modo dispositivo: ${isMobile ? 'MÓVIL' : 'ESCRITORIO'}`, isMobile ? `servlet: ${servletBaseUrl ?? 'no configurado'}` : 'WebSocket local');
+    const signMode = getSignModeInfo();
+    log(`modo firma: ${signMode.mode}`, signMode.detail);
 
     // 1. Init AutoFirma
     log('initAutoFirma…');
@@ -169,7 +172,6 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
       {showInstallModal && (
         <AutofirmaInstallModal
           onClose={() => setShowInstallModal(false)}
-          onRetry={() => { setShowInstallModal(false); handleSign(); }}
         />
       )}
 
@@ -200,6 +202,16 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
       >
         {buttonLabel}
       </button>
+
+      <div style={{ textAlign: 'center', marginTop: '0.875rem' }}>
+        <button
+          type="button"
+          onClick={() => setShowInstallModal(true)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'underline' }}
+        >
+          ¿Cómo instalar AutoFirma?
+        </button>
+      </div>
 
       <DevSigningLog />
     </div>
