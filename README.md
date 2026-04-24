@@ -13,7 +13,7 @@ El usuario recibe un enlace por email, visualiza el documento y lo firma con su 
 - [Flujo de uso completo](#flujo-de-uso-completo)
 - [Canales de firma](#canales-de-firma)
 - [Setup y desarrollo](#setup-y-desarrollo)
-- [Probar desde móvil (ngrok + Tomcat)](#probar-desde-móvil-ngrok--tomcat)
+- [Probar desde móvil (Cloudflare Tunnel + Tomcat)](#probar-desde-móvil-cloudflare-tunnel--tomcat)
 - [Variables de entorno](#variables-de-entorno)
 - [Firma trifásica vs firma simple](#firma-trifásica-vs-firma-simple)
 - [Referencia de archivos clave](#referencia-de-archivos-clave)
@@ -36,7 +36,7 @@ Usuario (navegador)
 │  /afirma-signature-retriever ────────────►  │──► Tomcat :8081 (WAR intermedio)
 │  /afirma-server-triphase-signer ─────────►  │──► Tomcat :8081 (WAR trifásico)
 └─────────────────────────────────────────────┘
-         │ ngrok (para pruebas móvil)
+         │ Cloudflare Tunnel (para pruebas móvil)
          ▼
   Dispositivo móvil
   Android Chrome + AutoFirma App
@@ -64,6 +64,7 @@ glovalsign-signer/
 │   │   └── signing.js             # Cliente HTTP al backend Glovalsign (/api/v1/sign)
 │   ├── components/
 │   │   ├── Alert.jsx              # Banner de error/aviso reutilizable
+│   │   ├── AutofirmaInstallModal.jsx # Modal con instrucciones de instalación de AutoFirma
 │   │   ├── Footer.jsx
 │   │   ├── Header.jsx
 │   │   ├── PdfViewer.jsx          # Visor PDF basado en PDF.js (canvas). Funciona en móvil.
@@ -200,15 +201,14 @@ npm run preview
 
 ---
 
-## Probar desde móvil (ngrok + Tomcat)
+## Probar desde móvil (Cloudflare Tunnel + Tomcat)
 
-Para firmar desde un móvil Android/iOS hacen falta tres piezas corriendo a la vez: Tomcat con los WARs, el dev server de React, y un túnel HTTPS público (ngrok).
+Para firmar desde un móvil Android/iOS hacen falta tres piezas corriendo a la vez: Tomcat con los WARs, el dev server de React, y un túnel HTTPS público.
 
 ### Paso 1 — Compilar los WARs (solo la primera vez)
 
 ```bash
-cd servlet
-./build.sh
+./servlet/build.sh
 ```
 
 Requiere Docker. Clona el repo `ctt-gob-es/clienteafirma` y compila los 3 WARs con Maven. Resultado en `servlet/wars/`.
@@ -216,58 +216,58 @@ Requiere Docker. Clona el repo `ctt-gob-es/clienteafirma` y compila los 3 WARs c
 ### Paso 2 — Levantar Tomcat
 
 ```bash
-cd servlet
-docker compose up -d
+cd servlet && docker compose up -d
 ```
 
-Verifica que los 3 WARs responden:
+Verifica que los WARs responden:
 
 ```bash
 curl "http://localhost:8081/afirma-signature-storage/StorageService?op=check"
-curl "http://localhost:8081/afirma-signature-retriever/RetrieveService?op=check"
-curl "http://localhost:8081/afirma-server-triphase-signer/SignatureService?op=check"
-# Cada uno debe devolver texto plano con HTTP 200
+# Debe devolver texto plano con HTTP 200
 ```
 
-### Paso 3 — Arrancar el dev server
+### Paso 3 — Arrancar el backend
+
+```bash
+cd glovalsign && npm run dev
+```
+
+### Paso 4 — Abrir el túnel Cloudflare
+
+Desde la raíz del workspace SIGNER:
+
+```bash
+./tunnel.sh
+```
+
+El script lanza un [Quick Tunnel de Cloudflare](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/) apuntando a `localhost:3000`, espera a que aparezca la URL `*.trycloudflare.com` y actualiza automáticamente `PUBLIC_SERVLET_BASE_URL` en este `.env` y `SPA_URL` en `glovalsign/.env`.
+
+> Requiere `cloudflared` instalado: `curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o ~/.local/bin/cloudflared && chmod +x ~/.local/bin/cloudflared`
+
+### Paso 5 — Arrancar el dev server
+
+**Después** de que el túnel haya actualizado el `.env`:
 
 ```bash
 npm run dev
 # Debe arrancar en :3000
 ```
 
-### Paso 4 — Abrir túnel ngrok
-
-```bash
-~/.local/bin/ngrok http 3000
-```
-
-Copia la URL `https://xxxx.ngrok-free.app` que aparece en la salida.
-
-### Paso 5 — Configurar `.env.local`
-
-```dotenv
-PUBLIC_SERVLET_BASE_URL=https://xxxx.ngrok-free.app
-PUBLIC_TRIPHASE_SIGNING=false   # o true si quieres firma trifásica
-```
-
-El dev server recargará automáticamente al guardar `.env.local`.
-
 ### Paso 6 — Abrir en el móvil
 
-Abre `https://xxxx.ngrok-free.app/firmar/<token>` en Chrome de Android (o Safari en iOS).
+Abre `https://<url-tunel>.trycloudflare.com/firmar/<token>` en Chrome de Android (o Safari en iOS).
 
-> **Por qué HTTPS**: Chrome en Android bloquea los `intent://` (que abren AutoFirma App) desde páginas no HTTPS. Sin ngrok o un host HTTPS real, la firma móvil no funciona.
+> **Por qué HTTPS**: Chrome en Android bloquea los `intent://` (que abren AutoFirma App) desde páginas no HTTPS. Sin un túnel HTTPS o un host real, la firma móvil no funciona.
 
 ### Para detener
 
 ```bash
+# Ctrl+C en el terminal de tunnel.sh
 docker compose -f servlet/docker-compose.yml down
-# Ctrl+C en el terminal del dev server
-# Ctrl+C en el terminal de ngrok
+# Ctrl+C en los terminales del dev server y del backend
 ```
 
-> **Nota**: La URL de ngrok cambia cada vez que lo relanzas (plan gratuito). Al relanzarlo actualiza `PUBLIC_SERVLET_BASE_URL` en `.env.local`.
+> **Nota**: La URL del túnel cambia cada vez que lo relanzas. El script `tunnel.sh` la actualiza automáticamente en ambos `.env`; recuerda reiniciar el dev server y el backend tras relanzarlo.
 
 ---
 
@@ -279,7 +279,7 @@ Crea `.env.local` en la raíz del proyecto para sobreescribir los valores de `.e
 |---|---|---|
 | `BACKEND_URL` | `http://localhost:4000` | URL del backend Glovalsign. Solo usada por el proxy del dev server. Sin efecto en producción. |
 | `AUTOFIRMA_SERVICES_TARGET` | `http://localhost:8081` | URL de Tomcat. El dev server proxifica `/afirma-*` hacia esta URL. Sin efecto en producción. |
-| `PUBLIC_SERVLET_BASE_URL` | `https://xxxx.ngrok-free.app` | Origen de los WARs tal como lo ve el navegador. Se pasa a `AutoScript.cargarAppAfirma()`. En producción es el dominio público donde están los WARs. |
+| `PUBLIC_SERVLET_BASE_URL` | `https://xxxx.trycloudflare.com` | Origen de los WARs tal como lo ve el navegador. Se pasa a `AutoScript.cargarAppAfirma()`. En producción es el dominio público donde están los WARs. Actualizado automáticamente por `tunnel.sh`. |
 | `PUBLIC_TRIPHASE_SIGNING` | `false` | `true` activa firma trifásica (solo hash viaja al móvil). Requiere el WAR `afirma-server-triphase-signer`. Ver sección siguiente. |
 
 > En producción no existe el proxy del dev server. El servidor web (nginx, etc.) debe encargarse de redirigir `/afirma-*` a Tomcat y `/api` al backend.
@@ -294,7 +294,7 @@ Hay dos modos de firma en móvil, controlados por `PUBLIC_TRIPHASE_SIGNING`:
 |---|---|---|
 | WARs necesarios | 2 (`storage` + `retriever`) | 3 (+ `triphase-signer`) |
 | Qué viaja al móvil | PDF completo | Solo el hash (~100 bytes) |
-| PDFs grandes | Lento (2 viajes del PDF por ngrok) | Rápido |
+| PDFs grandes | Lento (2 viajes del PDF por el túnel) | Rápido |
 | Complejidad | Menor | Mayor |
 
 ### Cómo funciona internamente
@@ -324,6 +324,7 @@ Wrapper sobre `window.AutoScript`. Funciones exportadas:
 - `isAutoScriptLoaded()` — comprueba si autoscript.js está disponible en `window`
 - `initAutoFirma(servletBaseUrl)` — llama a `AutoScript.cargarAppAfirma()` con la URL base de los WARs
 - `signPdfWithAutoFirma(base64Pdf)` — lanza `AutoScript.sign()` y devuelve una `Promise<string>` con el PDF firmado en Base64
+- `isNotInstalledError(err)` — devuelve `true` si el error indica que AutoFirma no está instalado o no responde (usado para mostrar el modal de instalación)
 - `arrayBufferToBase64(buffer)` / `base64ToUint8Array(base64)` — helpers de conversión
 
 El modo trifásico se activa automáticamente en este archivo según las vars de entorno `PUBLIC_TRIPHASE_SIGNING` y `PUBLIC_SERVLET_BASE_URL`.

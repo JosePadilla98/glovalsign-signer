@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react'; // useRef kept for scriptRe
 import { Alert } from '../components/Alert.jsx';
 import { Spinner } from '../components/Spinner.jsx';
 import { useDevSigningLog } from '../components/DevSigningLog.jsx';
+import { AutofirmaInstallModal } from '../components/AutofirmaInstallModal.jsx';
 import { ManualUploadStep } from './ManualUploadStep.jsx';
 import {
   isAutoScriptLoaded,
   initAutoFirma,
   signPdfWithAutoFirma,
   base64ToUint8Array,
+  isNotInstalledError,
 } from '../utils/autofirma.js';
 import { submitSignedDocument } from '../api/signing.js';
 
@@ -32,6 +34,7 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
   const [status, setStatus] = useState('idle');
   const [scriptReady, setScriptReady] = useState(false);
   const [error, setError] = useState('');
+  const [showInstallModal, setShowInstallModal] = useState(false);
   const scriptRef = useRef(null);
   const { log, DevSigningLog } = useDevSigningLog();
 
@@ -114,8 +117,13 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
       log('AutoScript.sign() completado ✓', `resultado: ${(signedBase64.length * 0.75 / 1024).toFixed(0)} KB`);
     } catch (err) {
       log('AutoScript.sign() ERROR', err.message);
-      setError(err.message);
-      setStatus('error');
+      if (isNotInstalledError(err)) {
+        setShowInstallModal(true);
+        setStatus('idle');
+      } else {
+        setError(err.message);
+        setStatus('error');
+      }
       return;
     }
 
@@ -158,24 +166,17 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
 
   return (
     <div>
+      {true && (
+        <AutofirmaInstallModal
+          onClose={() => setShowInstallModal(false)}
+          onRetry={() => { setShowInstallModal(false); handleSign(); }}
+        />
+      )}
+
       <p style={{ marginBottom: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
         Al pulsar el botón se abrirá la aplicación <strong>AutoFirma</strong> instalada en tu
         dispositivo. Selecciona tu certificado dentro de AutoFirma para completar la firma.
       </p>
-
-      {isMobile && isBlocked && (
-        <Alert
-          type="error"
-          message="La firma desde dispositivos móviles requiere un servidor de servlets configurado. Contacta con el administrador."
-        />
-      )}
-
-      {isMobile && !isBlocked && (
-        <Alert
-          type="warning"
-          message={`Modo móvil: usando servidor intermedio en ${servletBaseUrl}. Asegúrate de tener la app AutoFirma instalada en este dispositivo.`}
-        />
-      )}
 
       {isBusy && (
         <div style={{ marginBottom: '1.5rem' }}>

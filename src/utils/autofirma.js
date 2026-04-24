@@ -133,3 +133,15 @@ function buildSignError(errorType, errorMessage) {
   err.name = errorType ?? 'AutoFirmaError';
   return err;
 }
+
+/**
+ * Returns true when the error indicates AutoFirma is not installed or not reachable.
+ * Use this to decide whether to show the install instructions modal.
+ * @param {Error} err
+ * @returns {boolean}
+ */
+export function isNotInstalledError(err) {
+  if (!err) return false;
+  const connectionType = 'es.gob.afirma.standalone.afirma5.ws.client.socket.AutoFirmaConnectionException';
+  return err.name === connectionType || err.name === 'timeout';
+}
