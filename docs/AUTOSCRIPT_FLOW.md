@@ -12,15 +12,20 @@ Su responsabilidad es única: **detectar el entorno del cliente y elegir el meca
 
 Cuando llamamos a `AutoScript.cargarAppAfirma(servletBaseUrl)`, la librería sigue este árbol:
 
-```
-¿forceWSMode=true OR Android OR iOS?
- └─ Sí → AppAfirmaJSWebService (servidor intermedio / servlet)
- └─ No
-     ├─ ¿WebSocket soportado AND no IE AND no Firefox ≤ 60?
-     │   └─ Sí → AppAfirmaWebSocketClient  ← DESKTOP moderno
-     ├─ ¿No IE ≤ 10 AND no Safari 10?
-     │   └─ Sí → AppAfirmaJSSocket (protocolo custom por socket)
-     └─ Fallback → AppAfirmaJSWebService (servidor intermedio)
+```mermaid
+flowchart TD
+    A["cargarAppAfirma(servletBaseUrl)"] --> B{"forceWSMode=true\nOR Android OR iOS?"}
+    B -- Sí --> WS["AppAfirmaJSWebService\n(servidor intermedio / servlet)"]
+    B -- No --> C{"WebSocket soportado\nAND no IE\nAND no Firefox ≤ 60?"}
+    C -- Sí --> D["AppAfirmaWebSocketClient\n← DESKTOP moderno"]
+    C -- No --> E{"No IE ≤ 10\nAND no Safari 10?"}
+    E -- Sí --> F["AppAfirmaJSSocket\n(protocolo custom por socket)"]
+    E -- No --> G["AppAfirmaJSWebService\n(servidor intermedio / fallback)"]
+
+    style D fill:#d4edda,stroke:#28a745
+    style WS fill:#fff3cd,stroke:#ffc107
+    style G fill:#fff3cd,stroke:#ffc107
+    style F fill:#fff3cd,stroke:#ffc107
 ```
 
 En la práctica:
@@ -36,13 +41,17 @@ En la práctica:
 
 ## 3. Flujo DESKTOP — WebSocket local
 
-```
-┌──────────┐  AutoScript.sign(pdfB64)   ┌──────────────────┐  ws://127.0.0.1:PORT  ┌──────────────┐
-│  React   │ ────────────────────────► │  autoscript.js   │ ────────────────────► │  AutoFirma   │
-│  (SPA)   │                           │ WebSocketClient  │                       │  (nativo)    │
-│          │ ◄──────────────────────── │                  │ ◄──────────────────── │              │
-│          │  successCallback(signB64) └──────────────────┘   firma + certificado └──────────────┘
-└──────────┘
+```mermaid
+sequenceDiagram
+    participant R as React (SPA)
+    participant A as autoscript.js (WebSocketClient)
+    participant AF as AutoFirma (nativo)
+
+    R->>A: sign(pdfB64, alg, format, params)
+    A->>AF: ws://127.0.0.1:PORT — petición de firma
+    note over AF: diálogo selección de certificado
+    AF->>A: PDF firmado en Base64
+    A->>R: successCallback(signedB64)
 ```
 
 **Paso a paso:**
@@ -63,20 +72,22 @@ En la práctica:
 
 El móvil no puede abrir un WebSocket a localhost del servidor. Necesita un intermediario accesible por ambas partes.
 
-```
-┌──────────┐                 ┌────────────────────────┐               ┌────────────────────┐
-│  React   │  (1) PUT PDF    │  afirma-signature-     │               │  AutoFirma App     │
-│  (SPA)   │ ──────────────► │  storage/StorageService│               │  (móvil)           │
-│          │                 │  (Tomcat / servlet)    │               │                    │
-│          │  (2) intent://  │                        │  (3) GET PDF  │                    │
-│          │ ──intent URL──► │                        │ ◄───────────  │                    │
-│          │  abre App       └────────────────────────┘               │                    │
-│          │                 ┌────────────────────────┐  (4) PUT firma│                    │
-│          │  (5) polling    │  afirma-signature-     │ ◄───────────  │                    │
-│          │ ──────────────► │  retriever/            │               └────────────────────┘
-│          │ ◄────────────── │  RetrieveService       │
-│          │  signedPdfB64   └────────────────────────┘
-└──────────┘
+```mermaid
+sequenceDiagram
+    participant R as React (SPA)
+    participant SS as StorageService (Tomcat)
+    participant AF as AutoFirma App (móvil)
+    participant RS as RetrieveService (Tomcat)
+
+    R->>SS: (1) POST PDF completo → recibe id
+    R->>AF: (2) intent://afirma?id=... (lanza la app)
+    AF->>SS: (3) GET PDF por id
+    note over AF: firma con certificado
+    AF->>RS: (4) POST PDF firmado
+    loop polling
+        R->>RS: (5) GET resultado por id
+    end
+    RS->>R: PDF firmado en Base64
 ```
 
 **Paso a paso detallado:**
@@ -93,10 +104,17 @@ El móvil no puede abrir un WebSocket a localhost del servidor. Necesita un inte
 
 En el modo simple, el PDF completo viaja al servlet y al móvil. El modo trifásico optimiza esto:
 
-```
-React → Servlet (PDF completo) → calcula PRE-firma → devuelve solo el HASH
-AutoFirma firma el HASH (pequeño) → devuelve firma parcial
-Servlet ensambla PDF final con la firma
+```mermaid
+sequenceDiagram
+    participant R as React (SPA)
+    participant TS as afirma-server-triphase-signer
+    participant AF as AutoFirma App (móvil)
+
+    R->>TS: POST PDF completo (fase PRE)
+    TS->>R: Hash + metadatos de pre-firma
+    note over R,AF: AF descarga el hash (pequeño) y lo firma
+    AF->>TS: POST firma parcial (fase POST)
+    TS->>R: PDF firmado completo ensamblado
 ```
 
 Con un PDF de 7.7 MB esto sigue siendo lento si el servlet está en remoto (Cloudflare tunnel), porque el PDF completo sigue viajando hasta el servlet en la fase PRE.
@@ -182,23 +200,18 @@ Lo que **no protege**: la confidencialidad del PDF en tránsito (eso es responsa
 
 ## 8. Configuración en este proyecto
 
-```
-┌─────────────────────────────┐
-│  glovalsign-signer (React)  │  :3000
-│  PUBLIC_SERVLET_BASE_URL    │──────────────────────────────────┐
-│  PUBLIC_TRIPHASE_SIGNING    │                                  │
-└─────────────────────────────┘                                  ▼
-         │ /api proxy                              ┌─────────────────────────┐
-         ▼                                         │  Tomcat (servlet)       │  :8081
-┌─────────────────────────────┐                   │  /afirma-signature-      │
-│  glovalsign (backend)       │  :4000            │    storage/StorageService│
-│  (Node.js / Express)        │                   │  /afirma-signature-      │
-└─────────────────────────────┘                   │    retriever/            │
-                                                   │    RetrieveService       │
-                                                   │  /afirma-server-         │
-                                                   │    triphase-signer/      │
-                                                   │    SignatureService       │
-                                                   └─────────────────────────┘
+```mermaid
+graph LR
+    SIGNER["glovalsign-signer\nReact SPA\n:3000"]
+    BACK["glovalsign\nNode.js / Express\n:4000"]
+    TOMCAT["Tomcat\n:8081\n─────────────────\nStorageService\nRetrieveService\nSignatureService"]
+
+    SIGNER -- "/api proxy (rsbuild)" --> BACK
+    SIGNER -- "PUBLIC_SERVLET_BASE_URL\n(directo o vía proxy)" --> TOMCAT
+
+    style SIGNER fill:#cce5ff,stroke:#004085
+    style BACK fill:#d4edda,stroke:#155724
+    style TOMCAT fill:#fff3cd,stroke:#856404
 ```
 
 El proxy de rsbuild (`AUTOFIRMA_SERVICES_TARGET=http://localhost:8081`) hace que los servlets sean accesibles para el browser en el mismo origen que la SPA, evitando problemas de CORS durante el desarrollo.

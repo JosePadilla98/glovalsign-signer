@@ -141,8 +141,16 @@ function buildSignError(errorType, errorMessage) {
   const knownTypes = {
     'es.gob.afirma.standalone.afirma5.ws.client.socket.AutoFirmaConnectionException':
       'No se pudo conectar con AutoFirma. ¿Está instalado y en ejecución?',
+    'es.gob.afirma.standalone.ApplicationNotFoundException':
+      'AutoFirma no está instalado o no se pudo iniciar.',
+    'java.util.concurrent.TimeoutException':
+      'Tiempo de espera agotado. AutoFirma no respondió.',
+    'java.lang.IOException':
+      'Error de comunicación con AutoFirma.',
     java_cancel: 'El usuario canceló la operación de firma.',
     cancel: 'El usuario canceló la operación de firma.',
+    'es.gob.afirma.core.AOCancelledOperationException': 'El usuario canceló la operación de firma.',
+    'es.gob.afirma.core.OutOfMemoryError': 'El fichero es demasiado grande para AutoFirma.',
     timeout: 'Tiempo de espera agotado. AutoFirma no respondió.',
   };
 
@@ -158,8 +166,17 @@ function buildSignError(errorType, errorMessage) {
  * @param {Error} err
  * @returns {boolean}
  */
+// NOTE: autoscript.js shows its own native modal (SupportDialog) when AutoFirma is not
+// installed or unreachable — before calling errorCB. We let that handle the error case.
+// Our AutofirmaInstallModal is only shown via the '¿Cómo instalar AutoFirma?' help button.
 export function isNotInstalledError(err) {
   if (!err) return false;
-  const connectionType = 'es.gob.afirma.standalone.afirma5.ws.client.socket.AutoFirmaConnectionException';
-  return err.name === connectionType || err.name === 'timeout';
+  const notInstalledTypes = new Set([
+    'es.gob.afirma.standalone.afirma5.ws.client.socket.AutoFirmaConnectionException',
+    'es.gob.afirma.standalone.ApplicationNotFoundException',
+    'java.util.concurrent.TimeoutException',
+    'java.lang.IOException',
+    'timeout',
+  ]);
+  return notInstalledTypes.has(err.name);
 }

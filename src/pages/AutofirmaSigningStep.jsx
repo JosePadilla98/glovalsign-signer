@@ -9,7 +9,6 @@ import {
   initAutoFirma,
   signPdfWithAutoFirma,
   base64ToUint8Array,
-  isNotInstalledError,
   getSignModeInfo,
 } from '../utils/autofirma.js';
 import { submitSignedDocument } from '../api/signing.js';
@@ -120,13 +119,8 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
       log('AutoScript.sign() completado ✓', `resultado: ${(signedBase64.length * 0.75 / 1024).toFixed(0)} KB`);
     } catch (err) {
       log('AutoScript.sign() ERROR', err.message);
-      if (isNotInstalledError(err)) {
-        setShowInstallModal(true);
-        setStatus('idle');
-      } else {
-        setError(err.message);
-        setStatus('error');
-      }
+      setError(err.message);
+      setStatus('error');
       return;
     }
 
