@@ -22,10 +22,10 @@ flowchart TD
     E -- Sí --> F["AppAfirmaJSSocket\n(protocolo custom por socket)"]
     E -- No --> G["AppAfirmaJSWebService\n(servidor intermedio / fallback)"]
 
-    style D fill:#d4edda,stroke:#28a745
-    style WS fill:#fff3cd,stroke:#ffc107
-    style G fill:#fff3cd,stroke:#ffc107
-    style F fill:#fff3cd,stroke:#ffc107
+    style D fill:#b3e6b3,stroke:#006600,stroke-width:2px,color:#000000
+    style WS fill:#ffe6b3,stroke:#cc8400,stroke-width:2px,color:#000000
+    style G fill:#ffe6b3,stroke:#cc8400,stroke-width:2px,color:#000000
+    style F fill:#ffe6b3,stroke:#cc8400,stroke-width:2px,color:#000000
 ```
 
 En la práctica:
