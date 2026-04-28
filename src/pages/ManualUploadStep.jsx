@@ -211,7 +211,7 @@ export function ManualUploadStep({ token, fileName, onSuccess }) {
       if (!result.ok) {
         throw new Error(result.error || 'Error al enviar el documento firmado al servidor.');
       }
-      onSuccess(signedBytes);
+      onSuccess(signedBytes, 'manual_upload');
     } catch (err) {
       setUploadError(err.message);
       setStatus('error');

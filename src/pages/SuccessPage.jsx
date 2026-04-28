@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 /**
  * Success confirmation page shown after the document is signed and submitted.
  */
-export function SuccessPage({ signerName, documentType, signedPdfBytes }) {
+export function SuccessPage({ signerName, documentType, signedPdfBytes, signingMethod }) {
   const [downloadUrl, setDownloadUrl] = useState(null);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function SuccessPage({ signerName, documentType, signedPdfBytes }) {
         {signerName ? `${signerName}, el` : 'El'} documento{documentType ? ` (${documentType})` : ''} ha sido firmado
         y enviado a Glovalsign correctamente.
       </p>
-      {downloadUrl && (
+      {downloadUrl && signingMethod !== 'manual_upload' && (
         <a
           href={downloadUrl}
           download={fileName}

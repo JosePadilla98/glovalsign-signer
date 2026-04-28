@@ -142,7 +142,7 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
     }
 
     log('=== firma completada ===');
-    onSuccess(signedBytes);
+    onSuccess(signedBytes, 'autofirma');
   }
 
   // ── Derived flags ───────────────────────────────────────────────────────

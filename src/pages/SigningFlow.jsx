@@ -30,6 +30,7 @@ export function SigningFlow({ token }) {
   const [loadError, setLoadError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [signedPdfBytes, setSignedPdfBytes] = useState(null);
+  const [signingMethod, setSigningMethod] = useState(null);
   // PDF bytes captured from PdfViewer once it finishes downloading the document.
   // PdfViewer already downloads the PDF to render it — onBytesReady lets us reuse
   // those same bytes for AutoFirma without a second network request.
@@ -122,6 +123,7 @@ export function SigningFlow({ token }) {
         signerName={solicitud?.datos_documento?.nombre_firmante}
         documentType={solicitud?.datos_documento?.tipo_documento}
         signedPdfBytes={signedPdfBytes}
+        signingMethod={signingMethod}
       />
     );
   }
@@ -162,7 +164,7 @@ export function SigningFlow({ token }) {
             token={token}
             solicitud={solicitud}
             prefetchedPdfRef={prefetchedPdfRef}
-            onSuccess={(bytes) => { setSignedPdfBytes(bytes); setCurrentStep(STEP_SUCCESS); }}
+            onSuccess={(bytes, method) => { setSignedPdfBytes(bytes); setSigningMethod(method); setCurrentStep(STEP_SUCCESS); }}
           />
         )}
       </div>
