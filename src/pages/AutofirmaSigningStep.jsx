@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'; // useRef kept for scriptRef
 import { Alert } from '../components/Alert.jsx';
-import { Spinner } from '../components/Spinner.jsx';
 import { useDevSigningLog } from '../components/DevSigningLog.jsx';
 import { AutofirmaInstallModal } from '../components/AutofirmaInstallModal.jsx';
 import { ManualUploadStep } from './ManualUploadStep.jsx';
@@ -16,6 +15,47 @@ import { submitSignedDocument } from '../api/signing.js';
 const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 const servletBaseUrl = import.meta.env.PUBLIC_SERVLET_BASE_URL?.replace(/\/$/, '') || undefined;
 const mobileReady = !isMobile || !!servletBaseUrl;
+
+// ── Signing progress indicator ──────────────────────────────────────────────
+
+const SIGNING_STEPS = [
+  { key: 'loading_script', label: 'Cargando AutoFirma' },
+  { key: 'signing',        label: 'Esperando confirmación en AutoFirma…' },
+  { key: 'uploading',      label: 'Enviando documento firmado' },
+];
+const STEP_INDEX = { loading_script: 0, signing: 1, uploading: 2 };
+
+function SigningProgressIndicator({ status }) {
+  const currentIdx = STEP_INDEX[status] ?? -1;
+  if (currentIdx < 0) return null;
+  return (
+    <div className="signing-progress" role="status" aria-live="polite">
+      {SIGNING_STEPS.map((step, i) => {
+        const isDone = i < currentIdx;
+        const isActive = i === currentIdx;
+        return (
+          <div
+            key={step.key}
+            className={`signing-progress__step${
+              isActive ? ' signing-progress__step--active'
+              : isDone  ? ' signing-progress__step--done'
+              : ''
+            }`}
+          >
+            <span className="signing-progress__icon">
+              {isDone
+                ? <span className="signing-progress__check">✓</span>
+                : isActive
+                ? <span className="signing-progress__spinner" />
+                : <span className="signing-progress__dot" />}
+            </span>
+            {step.label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 /**
  * Step 2 — AutoFirma-based signing.
@@ -174,11 +214,7 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
         dispositivo. Selecciona tu certificado dentro de AutoFirma para completar la firma.
       </p>
 
-      {isBusy && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <Spinner label={buttonLabel} />
-        </div>
-      )}
+      {isBusy && <SigningProgressIndicator status={status} />}
 
       {error && (
         <div style={{ marginBottom: '1.5rem' }}>
@@ -190,10 +226,11 @@ export function AutofirmaSigningStep({ token, solicitud, prefetchedPdfRef, onSuc
 
       <button
         type="button"
-        className="btn btn--primary btn--lg btn--full"
+        className={`btn btn--primary btn--lg btn--full${isBusy ? ' btn--loading' : ''}`}
         onClick={handleSign}
         disabled={isBusy || isBlocked || !scriptReady}
       >
+        {isBusy && <span className="btn__spinner" aria-hidden="true" />}
         {buttonLabel}
       </button>
 
