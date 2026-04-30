@@ -21,9 +21,10 @@ Browser → POST https://servlet/StorageService    ← blob cifrado (sin clave)
 Browser → afirma://service?...&key=XXXXXXXX     ← clave (URL del OS, no sale por la red)
 ```
 
+
 La clave viaja por el **URL scheme del OS** directamente a AutoFirma. Un atacante que intercepta el tráfico HTTP/S entre browser y servlet solo ve el blob cifrado, **sin la clave**.
 
-**Sin embargo**, cuando AutoFirma descarga el resultado firmado del servlet, sí incluye la clave en la URL:
+**Sin embargo**, cuando AutoFirma descarga el PDF original cifrado del servlet para poder firmarlo, sí incluye la clave en la URL:
 
 ```
 AutoFirma → GET https://servlet/RetrieveService?op=get&id=<fileId>&key=XXXXXXXX
