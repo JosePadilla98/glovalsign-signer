@@ -15,7 +15,7 @@ Este documento describe los dos tipos de flujo de firma digital en escritorio cu
 2. **Se genera un puerto aleatorio** (por defecto entre 49152–65535) para el WebSocket local.
 3. **El navegador intenta conectar a** `wss://127.0.0.1:<puerto>`.
 4. **Si la conexión es exitosa**, se establece un canal persistente con AutoFirma.
-5. **La SPA envía el PDF y los parámetros de firma** a través del WebSocket (en JSON).
+5. **La SPA envía el PDF y los parámetros de firma** a través del WebSocket, empaquetados en un objeto JSON. El PDF se codifica en **Base64** (campo `dataB64`).
 6. **AutoFirma realiza la firma** usando el certificado seleccionado por el usuario.
 7. **El PDF firmado se devuelve** por el mismo WebSocket al navegador.
 8. **La SPA sube el PDF firmado** al backend mediante `POST /firmar-spa/:token`.

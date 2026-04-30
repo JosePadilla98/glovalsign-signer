@@ -275,22 +275,9 @@ AutoFirma devuelve a `autoscript.js` la señal `ERR-11:=...` (cancelación) o `C
 
 ### 18. ¿Hay reintentos automáticos? ¿En qué parte del flujo?
 
-Hay **dos niveles** de reintentos:
+Hay **reintentos automáticos solo en el lado cliente**:
 
 1. **AutoScript (nivel comunicación):** en modo WebSocket, `autoscript.js` reintenta la conexión hasta 15 veces cada 2 segundos antes de declarar que AutoFirma no está disponible. En modo polling del servidor intermedio, reintenta hasta 10 veces cada 3 segundos; si recibe `#WAIT`, reinicia el contador.
 
-2. **Job de reintentos del backend (nivel negocio):** el `pdfSigningRetryScheduler` procesa periódicamente los documentos que quedaron en estado de error de firma PDF (p. ej. si el servicio externo `AplicacionValtecnic` estaba caído cuando se recibió el PDF firmado). Se ejecuta una vez al arrancar el servidor y luego cada `REINTENTO_FIRMAR_DOCUMENTO_MINUTOS` minutos (por defecto 15). Procesa los documentos fallidos de forma secuencial para no sobrecargar el servicio externo.
-
 ---
 
-### 19. ¿Cómo funciona el job de reintentos (`pdfSigningRetryScheduler`)?
-
-Al arrancar `glovalsign`, `startPdfSigningRetryJob()` lanza una primera ejecución inmediata y programa un `setInterval` con el intervalo configurado. Cada ciclo:
-
-1. Consulta en base de datos los documentos con estado de error de firma PDF (`getDocumentsWithPdfSigningError`).
-2. Por cada documento, llama a `retryPdfSigningForDocument`, que:
-   - Reconstruye los parámetros necesarios (número de expediente, código de usuario, IP del servidor).
-   - Llama a `pdfSigningService.signWithfirmaDocumentoPDF` para re-enviar al servicio externo.
-   - Si tiene éxito, añade la evidencia de firma en base de datos y actualiza el estado a `FIRMADO`.
-   - Si falla de nuevo, registra el error en logs (sin cambiar estado, para que el siguiente ciclo lo reintente).
-3. Registra métricas de la ejecución (`jobEjecucionesTotal` con resultado `exito`/`fallo`, `jobUltimaEjecucionTimestamp`).
