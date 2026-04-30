@@ -1,4 +1,23 @@
+
 # Flujos de firma en escritorio (sin servlet)
+
+**Resumen rápido:**
+Hay dos formas de que tu navegador hable con AutoFirma en tu ordenador para firmar un PDF: una es como una llamada de teléfono abierta (WebSocket), y la otra es como mandarse cartas dentro de la misma casa (HTTP local). En ambos casos, el PDF nunca sale de tu equipo salvo para enviarse al backend final.
+
+---
+
+## Explicación sencilla (para niños)
+
+**WebSocket local:** Es como tener una llamada abierta con AutoFirma, puedes hablarle todo el rato y pasarle el PDF en trozos de letras (Base64). Solo tú y AutoFirma pueden escuchar.
+
+**Socket HTTP directo:** Es como mandarle cartas a AutoFirma. Si el PDF es grande, lo partes en varias cartas. Cada vez que quieres algo, mandas una carta y recibes otra de vuelta. Nadie más puede verlas porque solo viajan dentro de tu ordenador.
+
+En ambos casos, el PDF nunca sale de tu casa (tu ordenador) salvo para enviarse al backend cuando ya está firmado.
+
+---
+
+
+## Explicación técnica detallada
 
 Este documento describe los dos tipos de flujo de firma digital en escritorio cuando **no interviene el servlet intermedio**. Ambos flujos usan AutoFirma instalado localmente y comunicación directa entre el navegador y la aplicación nativa.
 
