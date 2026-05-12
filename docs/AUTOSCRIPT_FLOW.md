@@ -70,7 +70,8 @@ sequenceDiagram
 
 ## 4. Flujo MÓVIL — Servidor intermedio (servlet)
 
-El móvil no puede abrir un WebSocket a localhost del servidor. Necesita un intermediario accesible por ambas partes.
+
+El móvil no puede abrir un WebSocket a localhost del servidor. Necesita un intermediario accesible por ambas partes. **En este flujo, el PDF no solo se codifica en Base64, sino que además se cifra en el navegador antes de enviarse al servlet. El cifrado se realiza con DES (modo ECB, clave aleatoria de 8 dígitos generada en el browser), y el servlet nunca conoce la clave: solo almacena y reenvía blobs cifrados.**
 
 ```mermaid
 sequenceDiagram
@@ -92,7 +93,7 @@ sequenceDiagram
 
 **Paso a paso detallado:**
 
-1. **AutoScript sube el PDF** al servlet de almacenamiento (`StorageService`) mediante HTTP POST. El servlet devuelve un `id` de operación.
+1. **AutoScript cifra el PDF** (además de codificarlo en Base64) en el navegador usando DES y una clave aleatoria de 8 dígitos, y **sube el PDF cifrado** al servlet de almacenamiento (`StorageService`) mediante HTTP POST. El servlet nunca ve el PDF en claro y solo almacena el blob cifrado. Devuelve un `id` de operación.
 2. **AutoScript construye una URL de invocación** con esquema `afirma://` (o `intent://` en Android). Esta URL contiene el `id` y las URLs de los servlets. La abre en el navegador o en un iframe.
 3. El sistema operativo reconoce el esquema y **lanza la app AutoFirma**. Si la app no está instalada, el OS simplemente ignora la URL (sin error explícito → el modal de instalación puede no dispararse automáticamente).
 4. **AutoFirma descarga el PDF** del servlet de almacenamiento usando el `id`.
@@ -135,15 +136,16 @@ Sin embargo, en algunos Android, el timeout no llega a producirse porque el poll
 
 ## 6. Comunicaciones React ↔ Servlet ↔ AutoFirma (resumen de red)
 
+
 ### Modo simple (sin trifásico)
 
 | # | Origen | Destino | Datos | Protocolo |
 |---|---|---|---|---|
-| 1 | `autoscript.js` (browser) | `StorageService` | PDF completo en Base64 | HTTP POST |
-| 2 | App AutoFirma | `StorageService` | - (descarga el PDF) | HTTP GET |
-| 3 | App AutoFirma | `RetrieveService` | PDF firmado en Base64 | HTTP POST |
-| 4 | `autoscript.js` (browser) | `RetrieveService` | - (polling hasta recibir firma) | HTTP GET repetido |
-| 5 | `autoscript.js` (browser) | React callback | PDF firmado en Base64 | Memoria JS |
+| 1 | `autoscript.js` (browser) | `StorageService` | PDF completo **cifrado y en Base64** | HTTP POST |
+| 2 | App AutoFirma | `StorageService` | - (descarga el PDF cifrado) | HTTP GET |
+| 3 | App AutoFirma | `RetrieveService` | PDF firmado **cifrado y en Base64** | HTTP POST |
+| 4 | `autoscript.js` (browser) | `RetrieveService` | - (polling hasta recibir firma cifrada) | HTTP GET repetido |
+| 5 | `autoscript.js` (browser) | React callback | PDF firmado en Base64 (ya descifrado) | Memoria JS |
 | 6 | React | Backend (`/api/v1/sign/...`) | PDF firmado en bytes | HTTP POST |
 
 ### Modo trifásico
@@ -161,12 +163,13 @@ Sin embargo, en algunos Android, el timeout no llega a producirse porque el poll
 
 ## 7. Implicaciones de seguridad al enviar el PDF al servlet
 
+
 ### Qué viaja por la red
 
-En ambos modos, el **PDF completo** llega al servlet en algún momento:
+En ambos modos, el **PDF completo** llega al servlet en algún momento, pero **en el flujo móvil/servidor intermedio, el PDF siempre viaja cifrado (además de en Base64)**:
 
-- **Modo simple**: viaja desde el browser al `StorageService` y desde allí a la app AutoFirma.
-- **Modo trifásico**: viaja desde el browser al `afirma-server-triphase-signer` en la fase PRE.
+- **Modo simple**: el PDF viaja cifrado y en Base64 desde el browser al `StorageService` y desde allí a la app AutoFirma. El servlet nunca ve el PDF en claro.
+- **Modo trifásico**: el PDF completo viaja cifrado y en Base64 desde el browser al `afirma-server-triphase-signer` en la fase PRE.
 
 ### Riesgos a considerar
 
