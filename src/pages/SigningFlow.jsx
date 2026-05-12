@@ -4,6 +4,7 @@ import { Spinner } from '../components/Spinner.jsx';
 import { Alert } from '../components/Alert.jsx';
 import { DocumentViewer } from './DocumentViewer.jsx';
 import { SigningStep } from './AutofirmaSigningStep.jsx';
+import { CustodiedCertSigningStep } from './CustodiedCertSigningStep.jsx';
 import { SuccessPage } from './SuccessPage.jsx';
 import { ErrorPage } from './ErrorPage.jsx';
 import { getSolicitud } from '../api/signing.js';
@@ -160,12 +161,20 @@ export function SigningFlow({ token }) {
         )}
 
         {currentStep === STEP_SIGN && (
-          <SigningStep
-            token={token}
-            solicitud={solicitud}
-            prefetchedPdfRef={prefetchedPdfRef}
-            onSuccess={(bytes, method) => { setSignedPdfBytes(bytes); setSigningMethod(method); setCurrentStep(STEP_SUCCESS); }}
-          />
+          solicitud?.datos_documento?.requiere_certificado_digital_custodiado
+            ? (
+              <CustodiedCertSigningStep
+                token={token}
+                onSuccess={(bytes, method) => { setSignedPdfBytes(bytes); setSigningMethod(method); setCurrentStep(STEP_SUCCESS); }}
+              />
+            ) : (
+              <SigningStep
+                token={token}
+                solicitud={solicitud}
+                prefetchedPdfRef={prefetchedPdfRef}
+                onSuccess={(bytes, method) => { setSignedPdfBytes(bytes); setSigningMethod(method); setCurrentStep(STEP_SUCCESS); }}
+              />
+            )
         )}
       </div>
     </div>

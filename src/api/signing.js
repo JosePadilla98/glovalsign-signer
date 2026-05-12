@@ -110,3 +110,34 @@ export async function validatePdf(token, signedPdfBytes) {
     return { ok: false, error: err.message };
   }
 }
+
+/**
+ * Submit the PIN to sign a document using a server-side custodied certificate.
+ * The backend downloads, signs and stores the PDF itself.
+ *
+ * @param {string} token   Signing token
+ * @param {string} pin     Certificate PIN entered by the user
+ * @returns {Promise<{ok: boolean, data?: any, error?: string, status?: number}>}
+ */
+export async function submitCustodiedCertSigning(token, pin) {
+  const url = `${BASE_URL}/public/certificado-digital-custodiado/firmar-spa/${token}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin }),
+    });
+    if (!res.ok) {
+      let error = `HTTP ${res.status}`;
+      try {
+        const body = await res.json();
+        error = body?.responseMessage || body?.message || error;
+      } catch (_) { /* ignore */ }
+      return { ok: false, error, status: res.status };
+    }
+    const data = await res.json();
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}

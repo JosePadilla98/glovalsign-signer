@@ -26,7 +26,7 @@ export function SuccessPage({ signerName, documentType, signedPdfBytes, signingM
         {signerName ? `${signerName}, el` : 'El'} documento{documentType ? ` (${documentType})` : ''} ha sido firmado
         y enviado a Glovalsign correctamente.
       </p>
-      {downloadUrl && signingMethod !== 'manual_upload' && (
+      {downloadUrl && signingMethod !== 'manual_upload' && signingMethod !== 'custodiado' && (
         <a
           href={downloadUrl}
           download={fileName}
